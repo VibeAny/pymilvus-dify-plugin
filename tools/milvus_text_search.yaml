@@ -1,0 +1,170 @@
+identity:
+  name: "milvus_text_search"
+  author: "zeroz-lab"
+  label:
+    en_US: "Text Semantic Search"
+    zh_Hans: "文本语义搜索"
+    pt_BR: "Busca Semântica de Texto"
+description:
+  human:
+    en_US: "Perform semantic search by converting text query to vector and searching in Milvus collection"
+    zh_Hans: "通过将文本查询转换为向量并在 Milvus 集合中搜索来执行语义搜索"
+    pt_BR: "Realizar busca semântica convertendo consulta de texto em vetor e pesquisando na coleção Milvus"
+  llm: "A tool for performing semantic text search by automatically converting text queries to vectors and searching in Milvus collections"
+parameters:
+  - name: collection_name
+    type: string
+    required: true
+    label:
+      en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
+    human_description:
+      en_US: "The name of the collection to search in"
+      zh_Hans: "要搜索的集合名称"
+      pt_BR: "O nome da coleção para pesquisar"
+    llm_description: "The name of the collection to perform semantic search in"
+    form: llm
+  - name: query_text
+    type: string
+    required: true
+    label:
+      en_US: "Search Query"
+      zh_Hans: "搜索查询"
+      pt_BR: "Consulta de Busca"
+    human_description:
+      en_US: "The text query to search for (will be automatically converted to vector)"
+      zh_Hans: "要搜索的文本查询（将自动转换为向量）"
+      pt_BR: "A consulta de texto para pesquisar (será automaticamente convertida em vetor)"
+    llm_description: "The text query that will be automatically converted to vector for semantic search"
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    default: 5
+    label:
+      en_US: "Result Limit"
+      zh_Hans: "结果限制"
+      pt_BR: "Limite de Resultados"
+    human_description:
+      en_US: "Maximum number of results to return (1-100)"
+      zh_Hans: "返回的最大结果数量（1-100）"
+      pt_BR: "Número máximo de resultados a retornar (1-100)"
+    llm_description: "Maximum number of search results to return (1-100, default: 5)"
+    form: llm
+  - name: output_fields
+    type: string
+    required: false
+    label:
+      en_US: "Output Fields"
+      zh_Hans: "输出字段"
+      pt_BR: "Campos de Saída"
+    human_description:
+      en_US: "Comma-separated list of fields to return (e.g., 'text,metadata,title')"
+      zh_Hans: "要返回的字段列表，用逗号分隔（例如：'text,metadata,title'）"
+      pt_BR: "Lista de campos separados por vírgula para retornar (ex: 'text,metadata,title')"
+    llm_description: "Comma-separated list of fields to include in search results"
+    form: llm
+  - name: filter
+    type: string
+    required: false
+    label:
+      en_US: "Filter Expression"
+      zh_Hans: "过滤表达式"
+      pt_BR: "Expressão de Filtro"
+    human_description:
+      en_US: "Filter expression for scalar fields (e.g., 'category == \"tech\" and date > \"2024-01-01\"')"
+      zh_Hans: "标量字段的过滤表达式（例如：'category == \"tech\" and date > \"2024-01-01\"'）"
+      pt_BR: "Expressão de filtro para campos escalares (ex: 'category == \"tech\" and date > \"2024-01-01\"')"
+    llm_description: "Boolean expression for filtering results based on scalar fields"
+    form: llm
+  - name: embedding_model
+    type: select
+    required: false
+    default: "text-embedding-3-small"
+    label:
+      en_US: "Embedding Model"
+      zh_Hans: "嵌入模型"
+      pt_BR: "Modelo de Embedding"
+    human_description:
+      en_US: "The embedding model to use for query vectorization (must match collection's embedding model)"
+      zh_Hans: "用于查询向量化的嵌入模型（必须与集合的嵌入模型匹配）"
+      pt_BR: "O modelo de embedding para usar na vetorização da consulta (deve corresponder ao modelo de embedding da coleção)"
+    llm_description: "Embedding model to use for query vectorization (should match the model used for collection data)"
+    form: form
+    options:
+      - value: "text-embedding-3-small"
+        label:
+          en_US: "OpenAI text-embedding-3-small (1536 dim)"
+          zh_Hans: "OpenAI text-embedding-3-small (1536维)"
+          pt_BR: "OpenAI text-embedding-3-small (1536 dim)"
+      - value: "text-embedding-3-large"
+        label:
+          en_US: "OpenAI text-embedding-3-large (3072 dim)"
+          zh_Hans: "OpenAI text-embedding-3-large (3072维)"
+          pt_BR: "OpenAI text-embedding-3-large (3072 dim)"
+      - value: "text-embedding-ada-002"
+        label:
+          en_US: "OpenAI text-embedding-ada-002 (1536 dim)"
+          zh_Hans: "OpenAI text-embedding-ada-002 (1536维)"
+          pt_BR: "OpenAI text-embedding-ada-002 (1536 dim)"
+  - name: anns_field
+    type: string
+    required: false
+    default: "vector"
+    label:
+      en_US: "Vector Field Name"
+      zh_Hans: "向量字段名称"
+      pt_BR: "Nome do Campo Vetorial"
+    human_description:
+      en_US: "The name of the vector field to search against"
+      zh_Hans: "要进行搜索的向量字段的名称"
+      pt_BR: "O nome do campo vetorial para pesquisar"
+    llm_description: "The name of the vector field for similarity search"
+    form: llm
+  - name: metric_type
+    type: select
+    required: false
+    default: "COSINE"
+    label:
+      en_US: "Metric Type"
+      zh_Hans: "距离度量类型"
+      pt_BR: "Tipo de Métrica"
+    human_description:
+      en_US: "Distance metric type for similarity calculation"
+      zh_Hans: "用于相似度计算的距离度量类型"
+      pt_BR: "Tipo de métrica de distância para cálculo de similaridade"
+    llm_description: "Distance metric type: COSINE (recommended for text), L2, or IP"
+    form: form
+    options:
+      - value: COSINE
+        label:
+          en_US: "Cosine Similarity (Recommended)"
+          zh_Hans: "余弦相似度（推荐）"
+          pt_BR: "Similaridade Cosseno (Recomendado)"
+      - value: L2
+        label:
+          en_US: "Euclidean Distance"
+          zh_Hans: "欧几里得距离"
+          pt_BR: "Distância Euclidiana"
+      - value: IP
+        label:
+          en_US: "Inner Product"
+          zh_Hans: "内积"
+          pt_BR: "Produto Interno"
+  - name: min_similarity
+    type: number
+    required: false
+    label:
+      en_US: "Minimum Similarity"
+      zh_Hans: "最小相似度"
+      pt_BR: "Similaridade Mínima"
+    human_description:
+      en_US: "Minimum similarity threshold (0.0-1.0, only return results above this score)"
+      zh_Hans: "最小相似度阈值（0.0-1.0，仅返回高于此分数的结果）"
+      pt_BR: "Limite mínimo de similaridade (0.0-1.0, apenas retornar resultados acima desta pontuação)"
+    llm_description: "Minimum similarity threshold for filtering results (0.0 to 1.0)"
+    form: llm
+extra:
+  python:
+    source: tools/milvus_text_search.py

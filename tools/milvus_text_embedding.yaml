@@ -1,0 +1,74 @@
+identity:
+  name: "milvus_text_embedding"
+  author: "zeroz-lab"
+  label:
+    en_US: "Text to Vector Embedding"
+    zh_Hans: "文本向量化"
+    pt_BR: "Incorporação de Texto para Vetor"
+description:
+  human:
+    en_US: "Convert text to vector embeddings using configured embedding models"
+    zh_Hans: "使用配置的嵌入模型将文本转换为向量嵌入"
+    pt_BR: "Converter texto em embeddings vetoriais usando modelos de embedding configurados"
+  llm: "A tool for converting text to vector embeddings using OpenAI or Azure OpenAI embedding models"
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: "Input Text"
+      zh_Hans: "输入文本"
+      pt_BR: "Texto de Entrada"
+    human_description:
+      en_US: "The text to convert to vector embedding"
+      zh_Hans: "要转换为向量嵌入的文本"
+      pt_BR: "O texto para converter em embedding vetorial"
+    llm_description: "The input text to be converted to vector embedding"
+    form: llm
+  - name: model
+    type: select
+    required: false
+    default: "text-embedding-3-small"
+    label:
+      en_US: "Embedding Model"
+      zh_Hans: "嵌入模型"
+      pt_BR: "Modelo de Embedding"
+    human_description:
+      en_US: "The embedding model to use for text vectorization"
+      zh_Hans: "用于文本向量化的嵌入模型"
+      pt_BR: "O modelo de embedding para usar na vetorização de texto"
+    llm_description: "Embedding model to use: text-embedding-3-small, text-embedding-3-large, or text-embedding-ada-002"
+    form: form
+    options:
+      - value: "text-embedding-3-small"
+        label:
+          en_US: "OpenAI text-embedding-3-small (1536 dim)"
+          zh_Hans: "OpenAI text-embedding-3-small (1536维)"
+          pt_BR: "OpenAI text-embedding-3-small (1536 dim)"
+      - value: "text-embedding-3-large"
+        label:
+          en_US: "OpenAI text-embedding-3-large (3072 dim)"
+          zh_Hans: "OpenAI text-embedding-3-large (3072维)"
+          pt_BR: "OpenAI text-embedding-3-large (3072 dim)"
+      - value: "text-embedding-ada-002"
+        label:
+          en_US: "OpenAI text-embedding-ada-002 (1536 dim)"
+          zh_Hans: "OpenAI text-embedding-ada-002 (1536维)"
+          pt_BR: "OpenAI text-embedding-ada-002 (1536 dim)"
+  - name: normalize
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: "Normalize Vector"
+      zh_Hans: "标准化向量"
+      pt_BR: "Normalizar Vetor"
+    human_description:
+      en_US: "Whether to normalize the output vector (recommended for cosine similarity)"
+      zh_Hans: "是否标准化输出向量（推荐用于余弦相似度）"
+      pt_BR: "Se deve normalizar o vetor de saída (recomendado para similaridade cosseno)"
+    llm_description: "Whether to normalize the embedding vector (recommended for cosine similarity searches)"
+    form: form
+extra:
+  python:
+    source: tools/milvus_text_embedding.py
