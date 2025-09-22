@@ -57,7 +57,6 @@ credentials_for_provider:
       en_US: "The database name to connect to"
       zh_Hans: "要连接的数据库名称"
       pt_BR: "O nome do banco de dados para conectar"
-<<<<<<< HEAD
   # Embedding API 配置
   embedding_provider:
     type: select

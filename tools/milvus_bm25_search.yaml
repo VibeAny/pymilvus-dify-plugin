@@ -2,42 +2,42 @@ identity:
   name: milvus_bm25_search
   author: zeroz-lab
   label:
-    en_US: Milvus BM25 Text Search
-    zh_Hans: Milvus BM25文本搜索
-    pt_BR: Busca de Texto BM25 Milvus
+    en_US: "Milvus BM25 Text Search"
+    zh_Hans: "Milvus BM25文本搜索"
+    pt_BR: "Busca de Texto BM25 Milvus"
 description:
   human:
-    en_US: Perform BM25 keyword-based text search in Milvus collection without requiring external embedding APIs. Best for exact keyword matching and traditional text retrieval.
-    zh_Hans: 在Milvus集合中执行基于BM25关键词的文本搜索，无需外部嵌入API。最适合精确关键词匹配和传统文本检索。
-    pt_BR: Execute busca de texto baseada em palavras-chave BM25 na coleção Milvus sem necessidade de APIs de embedding externas. Melhor para correspondência exata de palavras-chave e recuperação de texto tradicional.
-  llm: Perform BM25 keyword-based text search in Milvus collection. This tool searches for documents using traditional keyword matching algorithms (BM25) without requiring external embedding APIs. It's particularly effective for exact keyword matches and when you need fast, cost-effective text retrieval. The search is based on term frequency and inverse document frequency scoring.
+    en_US: "Perform BM25 keyword-based text search in Milvus collection without requiring external embedding APIs. Best for exact keyword matching and traditional text retrieval."
+    zh_Hans: "在Milvus集合中执行基于BM25关键词的文本搜索，无需外部嵌入API。最适合精确关键词匹配和传统文本检索。"
+    pt_BR: "Execute busca de texto baseada em palavras-chave BM25 na coleção Milvus sem necessidade de APIs de embedding externas. Melhor para correspondência exata de palavras-chave e recuperação de texto tradicional."
+  llm: "Perform BM25 keyword-based text search in Milvus collection. This tool searches for documents using traditional keyword matching algorithms (BM25) without requiring external embedding APIs. It's particularly effective for exact keyword matches and when you need fast, cost-effective text retrieval. The search is based on term frequency and inverse document frequency scoring."
 parameters:
   - name: collection_name
     type: string
     required: true
     label:
-      en_US: Collection Name
-      zh_Hans: 集合名称
-      pt_BR: Nome da Coleção
+      en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
     human_description:
-      en_US: The name of the Milvus collection to search in
-      zh_Hans: 要搜索的Milvus集合名称
-      pt_BR: O nome da coleção Milvus para pesquisar
-    llm_description: The name of the Milvus collection where you want to perform BM25 text search. This collection should have BM25 functions configured for text fields.
+      en_US: "The name of the Milvus collection to search in"
+      zh_Hans: "要搜索的Milvus集合名称"
+      pt_BR: "O nome da coleção Milvus para pesquisar"
+    llm_description: "The name of the Milvus collection where you want to perform BM25 text search. This collection should have BM25 functions configured for text fields."
     form: llm
 
   - name: query_text
     type: string
     required: true
     label:
-      en_US: Search Query
-      zh_Hans: 搜索查询
-      pt_BR: Consulta de Busca
+      en_US: "Search Query"
+      zh_Hans: "搜索查询"
+      pt_BR: "Consulta de Busca"
     human_description:
-      en_US: The text to search for using BM25 keyword matching
-      zh_Hans: 使用BM25关键词匹配搜索的文本
-      pt_BR: O texto a ser pesquisado usando correspondência de palavras-chave BM25
-    llm_description: The search query text that will be processed using BM25 algorithm. The system will extract keywords and match them against document content using term frequency and inverse document frequency scoring.
+      en_US: "The text to search for using BM25 keyword matching"
+      zh_Hans: "使用BM25关键词匹配搜索的文本"
+      pt_BR: "O texto a ser pesquisado usando correspondência de palavras-chave BM25"
+    llm_description: "The search query text that will be processed using BM25 algorithm. The system will extract keywords and match them against document content using term frequency and inverse document frequency scoring."
     form: llm
 
   - name: limit
@@ -45,28 +45,28 @@ parameters:
     required: false
     default: 5
     label:
-      en_US: Result Limit
-      zh_Hans: 结果限制
-      pt_BR: Limite de Resultados
+      en_US: "Result Limit"
+      zh_Hans: "结果限制"
+      pt_BR: "Limite de Resultados"
     human_description:
-      en_US: Maximum number of search results to return (default: 5)
-      zh_Hans: 返回的最大搜索结果数量（默认：5）
-      pt_BR: Número máximo de resultados de busca a retornar (padrão: 5)
-    llm_description: The maximum number of search results to return. Higher values may affect performance.
+      en_US: "Maximum number of search results to return (default: 5)"
+      zh_Hans: "返回的最大搜索结果数量（默认：5）"
+      pt_BR: "Número máximo de resultados de busca a retornar (padrão: 5)"
+    llm_description: "The maximum number of search results to return. Higher values may affect performance."
     form: llm
 
   - name: output_fields
     type: string
     required: false
     label:
-      en_US: Output Fields
-      zh_Hans: 输出字段
-      pt_BR: Campos de Saída
+      en_US: "Output Fields"
+      zh_Hans: "输出字段"
+      pt_BR: "Campos de Saída"
     human_description:
-      en_US: Comma-separated list of fields to include in results (e.g., "title,content,author")
-      zh_Hans: 要包含在结果中的字段列表，用逗号分隔（如："title,content,author"）
-      pt_BR: Lista de campos separados por vírgula para incluir nos resultados (ex: "title,content,author")
-    llm_description: Specify which fields should be returned in the search results. Use comma-separated field names. If empty, only primary key and score will be returned.
+      en_US: "Comma-separated list of fields to include in results (e.g., \"title,content,author\")"
+      zh_Hans: "要包含在结果中的字段列表，用逗号分隔（如：\"title,content,author\"）"
+      pt_BR: "Lista de campos separados por vírgula para incluir nos resultados (ex: \"title,content,author\")"
+    llm_description: "Specify which fields should be returned in the search results. Use comma-separated field names. If empty, only primary key and score will be returned."
     form: llm
 
   - name: text_field
@@ -74,28 +74,28 @@ parameters:
     required: false
     default: "document_content"
     label:
-      en_US: Text Field Name
-      zh_Hans: 文本字段名称
-      pt_BR: Nome do Campo de Texto
+      en_US: "Text Field Name"
+      zh_Hans: "文本字段名称"
+      pt_BR: "Nome do Campo de Texto"
     human_description:
-      en_US: The name of the text field that has BM25 function configured (default: "document_content")
-      zh_Hans: 配置了BM25函数的文本字段名称（默认："document_content"）
-      pt_BR: O nome do campo de texto que tem função BM25 configurada (padrão: "document_content")
-    llm_description: The field name in the collection that contains the text content and has BM25 function configured for keyword search.
+      en_US: "The name of the text field that has BM25 function configured (default: \"document_content\")"
+      zh_Hans: "配置了BM25函数的文本字段名称（默认：\"document_content\"）"
+      pt_BR: "O nome do campo de texto que tem função BM25 configurada (padrão: \"document_content\")"
+    llm_description: "The field name in the collection that contains the text content and has BM25 function configured for keyword search."
     form: llm
 
   - name: filter
     type: string
     required: false
     label:
-      en_US: Filter Expression
-      zh_Hans: 过滤表达式
-      pt_BR: Expressão de Filtro
+      en_US: "Filter Expression"
+      zh_Hans: "过滤表达式"
+      pt_BR: "Expressão de Filtro"
     human_description:
-      en_US: Optional filter expression to narrow down search results (e.g., "category == 'health'")
-      zh_Hans: 可选的过滤表达式来缩小搜索结果范围（如："category == 'health'"）
-      pt_BR: Expressão de filtro opcional para restringir os resultados da busca (ex: "category == 'health'")
-    llm_description: Boolean expression to filter search results based on scalar fields. Use Milvus filter syntax.
+      en_US: "Optional filter expression to narrow down search results (e.g., \"category == 'health'\")"
+      zh_Hans: "可选的过滤表达式来缩小搜索结果范围（如：\"category == 'health'\"）"
+      pt_BR: "Expressão de filtro opcional para restringir os resultados da busca (ex: \"category == 'health'\")"
+    llm_description: "Boolean expression to filter search results based on scalar fields. Use Milvus filter syntax."
     form: llm
 
   - name: bm25_k1
@@ -103,14 +103,14 @@ parameters:
     required: false
     default: 1.2
     label:
-      en_US: BM25 K1 Parameter
-      zh_Hans: BM25 K1参数
-      pt_BR: Parâmetro K1 do BM25
+      en_US: "BM25 K1 Parameter"
+      zh_Hans: "BM25 K1参数"
+      pt_BR: "Parâmetro K1 do BM25"
     human_description:
-      en_US: BM25 term frequency saturation parameter (default: 1.2, range: 1.0-3.0)
-      zh_Hans: BM25词频饱和参数（默认：1.2，范围：1.0-3.0）
-      pt_BR: Parâmetro de saturação de frequência de termo BM25 (padrão: 1.2, faixa: 1.0-3.0)
-    llm_description: Controls term frequency saturation in BM25 scoring. Higher values give more weight to term frequency. Typical range is 1.0 to 3.0.
+      en_US: "BM25 term frequency saturation parameter (default: 1.2, range: 1.0-3.0)"
+      zh_Hans: "BM25词频饱和参数（默认：1.2，范围：1.0-3.0）"
+      pt_BR: "Parâmetro de saturação de frequência de termo BM25 (padrão: 1.2, faixa: 1.0-3.0)"
+    llm_description: "Controls term frequency saturation in BM25 scoring. Higher values give more weight to term frequency. Typical range is 1.0 to 3.0."
     form: llm
 
   - name: bm25_b
@@ -118,12 +118,12 @@ parameters:
     required: false
     default: 0.75
     label:
-      en_US: BM25 B Parameter
-      zh_Hans: BM25 B参数
-      pt_BR: Parâmetro B do BM25
+      en_US: "BM25 B Parameter"
+      zh_Hans: "BM25 B参数"
+      pt_BR: "Parâmetro B do BM25"
     human_description:
-      en_US: BM25 document length normalization parameter (default: 0.75, range: 0.0-1.0)
-      zh_Hans: BM25文档长度标准化参数（默认：0.75，范围：0.0-1.0）
-      pt_BR: Parâmetro de normalização de comprimento de documento BM25 (padrão: 0.75, faixa: 0.0-1.0)
-    llm_description: Controls how much document length affects scoring. 0 means no length normalization, 1 means full normalization.
+      en_US: "BM25 document length normalization parameter (default: 0.75, range: 0.0-1.0)"
+      zh_Hans: "BM25文档长度标准化参数（默认：0.75，范围：0.0-1.0）"
+      pt_BR: "Parâmetro de normalização de comprimento de documento BM25 (padrão: 0.75, faixa: 0.0-1.0)"
+    llm_description: "Controls how much document length affects scoring. 0 means no length normalization, 1 means full normalization."
     form: llm
