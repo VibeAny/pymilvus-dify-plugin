@@ -6,9 +6,9 @@ identity:
     zh_Hans: "Milvus"
     pt_BR: "Milvus"
   description:
-    en_US: "Complete Milvus vector database client for AI applications with text embedding and semantic search capabilities"
-    zh_Hans: "用于AI应用的完整Milvus向量数据库客户端，支持文本嵌入和语义搜索功能"
-    pt_BR: "Cliente completo de banco de dados vetorial Milvus para aplicações de IA com recursos de embedding de texto e busca semântica"
+    en_US: "Complete Milvus vector database client for AI applications with text embedding, semantic search, and BM25 keyword search capabilities"
+    zh_Hans: "用于AI应用的完整Milvus向量数据库客户端，支持文本嵌入、语义搜索和BM25关键词搜索功能"
+    pt_BR: "Cliente completo de banco de dados vetorial Milvus para aplicações de IA com recursos de embedding de texto, busca semântica e busca por palavras-chave BM25"
   icon: "icon.svg"
 credentials_for_provider:
   uri:
@@ -57,6 +57,7 @@ credentials_for_provider:
       en_US: "The database name to connect to"
       zh_Hans: "要连接的数据库名称"
       pt_BR: "O nome do banco de dados para conectar"
+<<<<<<< HEAD
   # Embedding API 配置
   embedding_provider:
     type: select
