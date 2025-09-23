@@ -2,15 +2,16 @@ identity:
   author: "zeroz-lab"
   name: "milvus"
   label:
-    en_US: "Milvus"
-    zh_Hans: "Milvus"
-    pt_BR: "Milvus"
+    en_US: "Milvus Plus"
+    zh_Hans: "Milvus Plus"
+    pt_BR: "Milvus Plus"
   description:
     en_US: "Complete Milvus vector database client for AI applications with text embedding, semantic search, and BM25 keyword search capabilities"
     zh_Hans: "用于AI应用的完整Milvus向量数据库客户端，支持文本嵌入、语义搜索和BM25关键词搜索功能"
     pt_BR: "Cliente completo de banco de dados vetorial Milvus para aplicações de IA com recursos de embedding de texto, busca semântica e busca por palavras-chave BM25"
   icon: "icon.svg"
 credentials_for_provider:
+  # Milvus 连接配置
   uri:
     type: text-input
     required: true
@@ -57,7 +58,8 @@ credentials_for_provider:
       en_US: "The database name to connect to"
       zh_Hans: "要连接的数据库名称"
       pt_BR: "O nome do banco de dados para conectar"
-  # Embedding API 配置
+  
+  # 嵌入模型提供商选择
   embedding_provider:
     type: select
     required: false
@@ -67,9 +69,9 @@ credentials_for_provider:
       zh_Hans: "嵌入模型提供商"
       pt_BR: "Provedor de Embedding"
     help:
-      en_US: "Choose the embedding service provider"
-      zh_Hans: "选择嵌入服务提供商"
-      pt_BR: "Escolha o provedor de serviço de embedding"
+      en_US: "Choose the embedding service provider for text vectorization"
+      zh_Hans: "选择用于文本向量化的嵌入服务提供商"
+      pt_BR: "Escolha o provedor de serviço de embedding para vetorização de texto"
     options:
       - value: "openai"
         label:
@@ -81,55 +83,85 @@ credentials_for_provider:
           en_US: "Azure OpenAI"
           zh_Hans: "Azure OpenAI"
           pt_BR: "Azure OpenAI"
+  
+  # OpenAI 配置组
   openai_api_key:
     type: secret-input
     required: false
+    show_on:
+      - variable: embedding_provider
+        value: openai
     label:
-      en_US: "OpenAI API Key"
-      zh_Hans: "OpenAI API 密钥"
-      pt_BR: "Chave API OpenAI"
+      en_US: "🔑 OpenAI API Key"
+      zh_Hans: "🔑 OpenAI API 密钥"
+      pt_BR: "🔑 Chave API OpenAI"
     placeholder:
       en_US: "sk-..."
       zh_Hans: "sk-..."
       pt_BR: "sk-..."
     help:
-      en_US: "OpenAI API key for text embedding (required if using OpenAI provider)"
+      en_US: "OpenAI API key for text embedding (required when using OpenAI provider)"
       zh_Hans: "用于文本嵌入的 OpenAI API 密钥（使用OpenAI提供商时必需）"
-      pt_BR: "Chave API OpenAI para embedding de texto (obrigatório se usando provedor OpenAI)"
+      pt_BR: "Chave API OpenAI para embedding de texto (obrigatório ao usar provedor OpenAI)"
+  
+  # Azure OpenAI 配置组
   azure_openai_endpoint:
     type: text-input
     required: false
+    show_on:
+      - variable: embedding_provider
+        value: azure_openai
     label:
-      en_US: "Azure OpenAI Endpoint"
-      zh_Hans: "Azure OpenAI 端点"
-      pt_BR: "Endpoint Azure OpenAI"
+      en_US: "🌐 Azure OpenAI Endpoint"
+      zh_Hans: "🌐 Azure OpenAI 端点"
+      pt_BR: "🌐 Endpoint Azure OpenAI"
     placeholder:
       en_US: "https://your-resource.openai.azure.com"
       zh_Hans: "https://your-resource.openai.azure.com"
       pt_BR: "https://your-resource.openai.azure.com"
     help:
-      en_US: "Azure OpenAI service endpoint (required if using Azure OpenAI provider)"
+      en_US: "Azure OpenAI service endpoint (required when using Azure OpenAI provider)"
       zh_Hans: "Azure OpenAI 服务端点（使用Azure OpenAI提供商时必需）"
-      pt_BR: "Endpoint do serviço Azure OpenAI (obrigatório se usando provedor Azure OpenAI)"
+      pt_BR: "Endpoint do serviço Azure OpenAI (obrigatório ao usar provedor Azure OpenAI)"
   azure_openai_api_key:
     type: secret-input
     required: false
+    show_on:
+      - variable: embedding_provider
+        value: azure_openai
     label:
-      en_US: "Azure OpenAI API Key"
-      zh_Hans: "Azure OpenAI API 密钥"
-      pt_BR: "Chave API Azure OpenAI"
+      en_US: "🔑 Azure OpenAI API Key"
+      zh_Hans: "🔑 Azure OpenAI API 密钥"
+      pt_BR: "🔑 Chave API Azure OpenAI"
     help:
-      en_US: "Azure OpenAI API key for text embedding (required if using Azure OpenAI provider)"
+      en_US: "Azure OpenAI API key for text embedding (required when using Azure OpenAI provider)"
       zh_Hans: "用于文本嵌入的 Azure OpenAI API 密钥（使用Azure OpenAI提供商时必需）"
-      pt_BR: "Chave API Azure OpenAI para embedding de texto (obrigatório se usando provedor Azure OpenAI)"
+      pt_BR: "Chave API Azure OpenAI para embedding de texto (obrigatório ao usar provedor Azure OpenAI)"
+  azure_api_version:
+    type: text-input
+    required: false
+    default: "2023-12-01-preview"
+    show_on:
+      - variable: embedding_provider
+        value: azure_openai
+    label:
+      en_US: "📅 Azure API Version"
+      zh_Hans: "📅 Azure API 版本"
+      pt_BR: "📅 Versão API Azure"
+    help:
+      en_US: "Azure OpenAI API version (only needed when using Azure OpenAI provider)"
+      zh_Hans: "Azure OpenAI API 版本（仅在使用Azure OpenAI提供商时需要）"
+      pt_BR: "Versão da API Azure OpenAI (apenas necessária ao usar provedor Azure OpenAI)"
+  
+  # 模型配置
   default_embedding_model:
     type: select
     required: false
     default: "text-embedding-3-small"
     label:
-      en_US: "Default Embedding Model"
-      zh_Hans: "默认嵌入模型"
-      pt_BR: "Modelo de Embedding Padrão"
+      en_US: "🤖 Default Embedding Model"
+      zh_Hans: "🤖 默认嵌入模型"
+      pt_BR: "🤖 Modelo de Embedding Padrão"
     help:
       en_US: "Default embedding model to use for text vectorization"
       zh_Hans: "用于文本向量化的默认嵌入模型"
@@ -137,31 +169,19 @@ credentials_for_provider:
     options:
       - value: "text-embedding-3-small"
         label:
-          en_US: "text-embedding-3-small (1536 dimensions)"
-          zh_Hans: "text-embedding-3-small (1536维)"
-          pt_BR: "text-embedding-3-small (1536 dimensões)"
+          en_US: "text-embedding-3-small (1536 dimensions, fast & cost-effective)"
+          zh_Hans: "text-embedding-3-small (1536维，快速且经济)"
+          pt_BR: "text-embedding-3-small (1536 dimensões, rápido e econômico)"
       - value: "text-embedding-3-large"
         label:
-          en_US: "text-embedding-3-large (3072 dimensions)"
-          zh_Hans: "text-embedding-3-large (3072维)"
-          pt_BR: "text-embedding-3-large (3072 dimensões)"
+          en_US: "text-embedding-3-large (3072 dimensions, highest quality)"
+          zh_Hans: "text-embedding-3-large (3072维，最高质量)"
+          pt_BR: "text-embedding-3-large (3072 dimensões, maior qualidade)"
       - value: "text-embedding-ada-002"
         label:
-          en_US: "text-embedding-ada-002 (1536 dimensions)"
-          zh_Hans: "text-embedding-ada-002 (1536维)"
-          pt_BR: "text-embedding-ada-002 (1536 dimensões)"
-  azure_api_version:
-    type: text-input
-    required: false
-    default: "2023-12-01-preview"
-    label:
-      en_US: "Azure API Version"
-      zh_Hans: "Azure API 版本"
-      pt_BR: "Versão API Azure"
-    help:
-      en_US: "Azure OpenAI API version (only needed for Azure OpenAI)"
-      zh_Hans: "Azure OpenAI API 版本（仅Azure OpenAI需要）"
-      pt_BR: "Versão da API Azure OpenAI (apenas necessária para Azure OpenAI)"
+          en_US: "text-embedding-ada-002 (1536 dimensions, legacy model)"
+          zh_Hans: "text-embedding-ada-002 (1536维，旧版模型)"
+          pt_BR: "text-embedding-ada-002 (1536 dimensões, modelo legado)"
 tools:
   - tools/milvus_collection.yaml
   - tools/milvus_search.yaml
