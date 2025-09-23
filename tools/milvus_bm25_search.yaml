@@ -127,3 +127,6 @@ parameters:
       pt_BR: "Parâmetro de normalização de comprimento de documento BM25 (padrão: 0.75, faixa: 0.0-1.0)"
     llm_description: "Controls how much document length affects scoring. 0 means no length normalization, 1 means full normalization."
     form: llm
+extra:
+  python:
+    source: tools/milvus_bm25_search.py
