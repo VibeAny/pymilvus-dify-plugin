@@ -1,20 +1,24 @@
-import json
-import logging
 from typing import Any
+from collections.abc import Generator
+import logging
 
 from dify_plugin import Tool
+from dify_plugin.entities.tool import ToolInvokeMessage
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 from pymilvus.model.dense import OpenAIEmbeddingFunction
 import requests
+from .milvus_base import MilvusBaseTool
 
 logger = logging.getLogger(__name__)
 
 
-class MilvusTextSearchTool(Tool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> str:
+class MilvusTextSearchTool(MilvusBaseTool, Tool):
+    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         """
         基于文本查询执行语义搜索（自动向量化+搜索）
         """
+        logger.info(f"🚀 [DEBUG] MilvusTextSearchTool._invoke() called with params: {tool_parameters}")
+        
         try:
             # 获取参数
             collection_name = tool_parameters.get("collection_name")
@@ -27,99 +31,93 @@ class MilvusTextSearchTool(Tool):
             metric_type = tool_parameters.get("metric_type", "COSINE")
             min_similarity = tool_parameters.get("min_similarity")
             
+            logger.debug(f"📋 [DEBUG] Text Search - Collection: {collection_name}, Query: {query_text[:50]}...")
+            
             if not collection_name:
-                return json.dumps({
-                    "success": False,
-                    "error": "集合名称不能为空"
-                }, ensure_ascii=False)
+                raise ValueError("Collection name is required")
             
             if not query_text:
-                return json.dumps({
-                    "success": False,
-                    "error": "查询文本不能为空"
-                }, ensure_ascii=False)
+                raise ValueError("Query text is required")
             
-            # 获取认证信息
-            credentials = self.runtime.credentials
-            uri = credentials.get("uri")
-            token = credentials.get("token")
+            if not self._validate_collection_name(collection_name):
+                raise ValueError("Invalid collection name format")
             
-            if not uri:
-                return json.dumps({
-                    "success": False,
-                    "error": "Milvus URI 未配置"
-                }, ensure_ascii=False)
+            logger.info("🔗 [DEBUG] Attempting to connect to Milvus for text search...")
             
-            # Step 1: 将查询文本转换为向量
-            logger.info(f"Converting query text to vector: {query_text[:100]}...")
-            embedding_result = self._get_text_embedding(query_text, embedding_model)
-            
-            if not embedding_result["success"]:
-                return json.dumps({
-                    "success": False,
-                    "error": f"文本向量化失败: {embedding_result['error']}"
-                }, ensure_ascii=False)
-            
-            query_vector = embedding_result["embedding"]
-            
-            # Step 2: 执行向量搜索
-            logger.info(f"Performing vector search in collection: {collection_name}")
-            search_result = self._perform_vector_search(
-                uri, token, collection_name, query_vector, limit, 
-                output_fields, filter_expr, anns_field, metric_type
-            )
-            
-            if not search_result["success"]:
-                return json.dumps(search_result, ensure_ascii=False)
-            
-            # Step 3: 处理搜索结果
-            results = search_result["results"]
-            
-            # 应用最小相似度过滤
-            if min_similarity is not None:
-                min_similarity = float(min_similarity)
-                filtered_results = []
-                for result in results:
-                    score = result.get("score", 0)
-                    # 对于 COSINE 距离，分数越接近 1 越相似
-                    if metric_type == "L2":
-                        similarity = 1 / (1 + score)  # 简单转换
-                    else:
-                        similarity = score
-                    
-                    if similarity >= min_similarity:
-                        result["similarity"] = similarity
-                        filtered_results.append(result)
+            # 使用 MilvusBaseTool 的连接方法进行连接验证
+            with self._get_milvus_client(self.runtime.credentials) as milvus_http_client:
+                logger.info("✅ [DEBUG] Successfully connected to Milvus for text search")
                 
-                results = filtered_results
-            
-            result = {
-                "success": True,
-                "query_text": query_text,
-                "collection_name": collection_name,
-                "embedding_model": embedding_model,
-                "vector_dimension": len(query_vector),
-                "total_results": len(results),
-                "results": results,
-                "search_params": {
-                    "limit": limit,
-                    "metric_type": metric_type,
-                    "anns_field": anns_field,
-                    "filter": filter_expr,
-                    "min_similarity": min_similarity
-                },
-                "message": f"在集合 {collection_name} 中找到 {len(results)} 个相关结果"
-            }
-            
-            logger.info(f"Text search completed: {len(results)} results found")
-            return json.dumps(result, ensure_ascii=False, default=str)
-            
+                # Step 1: 将查询文本转换为向量
+                logger.info(f"Converting query text to vector: {query_text[:100]}...")
+                embedding_result = self._get_text_embedding(query_text, embedding_model)
+                
+                if not embedding_result["success"]:
+                    raise ValueError(f"Text embedding failed: {embedding_result['error']}")
+                
+                query_vector = embedding_result["embedding"]
+                
+                # Step 2: 执行向量搜索
+                logger.info(f"Performing vector search in collection: {collection_name}")
+                
+                # 获取认证信息用于搜索
+                credentials = self.runtime.credentials
+                uri = credentials.get("uri")
+                token = credentials.get("token")
+                
+                search_result = self._perform_vector_search(
+                    uri, token, collection_name, query_vector, limit, 
+                    output_fields, filter_expr, anns_field, metric_type
+                )
+                
+                if not search_result["success"]:
+                    raise ValueError(f"Vector search failed: {search_result['error']}")
+                
+                # Step 3: 处理搜索结果
+                results = search_result["results"]
+                
+                # 应用最小相似度过滤
+                if min_similarity is not None:
+                    min_similarity = float(min_similarity)
+                    filtered_results = []
+                    for result in results:
+                        score = result.get("score", 0)
+                        # 对于 COSINE 距离，分数越接近 1 越相似
+                        if metric_type == "L2":
+                            similarity = 1 / (1 + score)  # 简单转换
+                        else:
+                            similarity = score
+                        
+                        if similarity >= min_similarity:
+                            result["similarity"] = similarity
+                            filtered_results.append(result)
+                    
+                    results = filtered_results
+                
+                result_data = {
+                    "operation": "text_search",
+                    "query_text": query_text,
+                    "collection_name": collection_name,
+                    "embedding_model": embedding_model,
+                    "vector_dimension": len(query_vector),
+                    "total_results": len(results),
+                    "results": results,
+                    "search_params": {
+                        "limit": limit,
+                        "metric_type": metric_type,
+                        "anns_field": anns_field,
+                        "filter": filter_expr,
+                        "min_similarity": min_similarity
+                    },
+                    "message": f"Found {len(results)} relevant results in collection {collection_name}"
+                }
+                
+                logger.info(f"✅ [DEBUG] Text search completed: {len(results)} results found")
+                yield from self._create_success_message(result_data)
+                
         except Exception as e:
-            logger.error(f"Text search failed: {str(e)}")
-            return json.dumps({
-                "success": False,
-                "error": f"文本搜索失败: {str(e)}"
-            }, ensure_ascii=False)
+            logger.error(f"❌ [DEBUG] Error in text search: {type(e).__name__}: {str(e)}", exc_info=True)
+            yield from self._handle_error(e)
     
     def _get_text_embedding(self, text: str, model_name: str) -> dict:
         """
@@ -352,3 +350,29 @@ class MilvusTextSearchTool(Tool):
                 "success": False,
                 "error": f"向量搜索执行失败: {str(e)}"
             }
+    
+    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
+        """统一的错误处理"""
+        logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
+        error_msg = str(error)
+        response = {
+            "success": False,
+            "error": error_msg,
+            "error_type": type(error).__name__
+        }
+        logger.debug(f"📤 [DEBUG] Sending error response: {response}")
+        yield self.create_json_message(response)
+    
+    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """创建成功响应消息"""
+        logger.debug(f"🎉 [DEBUG] _create_success_message() called with data: {data}")
+        response = {
+            "success": True,
+            **data
+        }
+        logger.debug(f"📤 [DEBUG] Sending success response: {response}")
+        yield self.create_json_message(response)
+
+
+# 在模块级别添加调试信息
+logger.info("📦 [DEBUG] milvus_text_search.py module loaded")

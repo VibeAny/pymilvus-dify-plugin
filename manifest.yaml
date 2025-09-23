@@ -1,7 +1,7 @@
 version: 0.0.1
 type: plugin
-author: zeroz-lab
-name: milvus
+author: VibeAny
+name: Milvus Plus
 label:
   en_US: Milvus Plus Vector Database
   ja_JP: Milvus Plus ベクトルデータベース

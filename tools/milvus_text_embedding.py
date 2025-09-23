@@ -1,63 +1,69 @@
-import json
-import logging
 from typing import Any
+from collections.abc import Generator
+import logging
 
 from dify_plugin import Tool
+from dify_plugin.entities.tool import ToolInvokeMessage
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 from pymilvus.model.dense import OpenAIEmbeddingFunction
+from .milvus_base import MilvusBaseTool
 
 logger = logging.getLogger(__name__)
 
 
-class MilvusTextEmbeddingTool(Tool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> str:
+class MilvusTextEmbeddingTool(MilvusBaseTool, Tool):
+    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         """
         将文本转换为向量嵌入
         """
+        logger.info(f"🚀 [DEBUG] MilvusTextEmbeddingTool._invoke() called with params: {tool_parameters}")
+        
         try:
             # 获取参数
             text = tool_parameters.get("text", "").strip()
             model_name = tool_parameters.get("model", "text-embedding-3-small")
             normalize = tool_parameters.get("normalize", True)
             
+            logger.debug(f"📋 [DEBUG] Text Embedding - Text: {text[:50]}..., Model: {model_name}")
+            
             if not text:
-                return json.dumps({
-                    "success": False,
-                    "error": "输入文本不能为空"
-                }, ensure_ascii=False)
+                raise ValueError("Input text is required")
             
-            # 获取向量嵌入
-            embedding_result = self._get_text_embedding(text, model_name)
+            logger.info("🔗 [DEBUG] Attempting to connect to Milvus for text embedding...")
             
-            if not embedding_result["success"]:
-                return json.dumps(embedding_result, ensure_ascii=False)
-            
-            embedding_vector = embedding_result["embedding"]
-            
-            # 标准化向量（如果需要）
-            if normalize:
-                embedding_vector = self._normalize_vector(embedding_vector)
-            
-            result = {
-                "success": True,
-                "text": text,
-                "embedding": embedding_vector,
-                "dimension": len(embedding_vector),
-                "model": model_name,
-                "normalized": normalize,
-                "provider": embedding_result.get("provider", "PyMilvus"),
-                "message": f"成功将文本转换为 {len(embedding_vector)} 维向量"
-            }
-            
-            logger.info(f"Text embedding successful: {len(embedding_vector)} dimensions")
-            return json.dumps(result, ensure_ascii=False)
-            
+            # 使用 MilvusBaseTool 的连接方法进行连接验证
+            with self._get_milvus_client(self.runtime.credentials) as milvus_http_client:
+                logger.info("✅ [DEBUG] Successfully connected to Milvus for text embedding")
+                
+                # 获取向量嵌入
+                embedding_result = self._get_text_embedding(text, model_name)
+                
+                if not embedding_result["success"]:
+                    raise ValueError(f"Text embedding failed: {embedding_result['error']}")
+                
+                embedding_vector = embedding_result["embedding"]
+                
+                # 标准化向量（如果需要）
+                if normalize:
+                    embedding_vector = self._normalize_vector(embedding_vector)
+                
+                result_data = {
+                    "operation": "text_embedding",
+                    "text": text,
+                    "embedding": embedding_vector,
+                    "dimension": len(embedding_vector),
+                    "model": model_name,
+                    "normalized": normalize,
+                    "provider": embedding_result.get("provider", "PyMilvus"),
+                    "message": f"Successfully converted text to {len(embedding_vector)}-dimensional vector"
+                }
+                
+                logger.info(f"✅ [DEBUG] Text embedding successful: {len(embedding_vector)} dimensions")
+                yield from self._create_success_message(result_data)
+                
         except Exception as e:
-            logger.error(f"Text embedding failed: {str(e)}")
-            return json.dumps({
-                "success": False,
-                "error": f"文本向量化失败: {str(e)}"
-            }, ensure_ascii=False)
+            logger.error(f"❌ [DEBUG] Error in text embedding: {type(e).__name__}: {str(e)}", exc_info=True)
+            yield from self._handle_error(e)
     
     def _get_text_embedding(self, text: str, model_name: str) -> dict:
         """
@@ -232,3 +238,29 @@ class MilvusTextEmbeddingTool(Tool):
             return vector
         
         return [x / norm for x in vector]
+    
+    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
+        """统一的错误处理"""
+        logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
+        error_msg = str(error)
+        response = {
+            "success": False,
+            "error": error_msg,
+            "error_type": type(error).__name__
+        }
+        logger.debug(f"📤 [DEBUG] Sending error response: {response}")
+        yield self.create_json_message(response)
+    
+    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """创建成功响应消息"""
+        logger.debug(f"🎉 [DEBUG] _create_success_message() called with data: {data}")
+        response = {
+            "success": True,
+            **data
+        }
+        logger.debug(f"📤 [DEBUG] Sending success response: {response}")
+        yield self.create_json_message(response)
+
+
+# 在模块级别添加调试信息
+logger.info("📦 [DEBUG] milvus_text_embedding.py module loaded")
