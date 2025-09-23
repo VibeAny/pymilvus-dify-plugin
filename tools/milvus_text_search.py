@@ -4,7 +4,7 @@ from typing import Any
 
 from dify_plugin import Tool
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
-from pymilvus import model
+from pymilvus.model.dense import OpenAIEmbeddingFunction
 import requests
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,7 @@ class MilvusTextSearchTool(Tool):
                     }
                 
                 # 使用 PyMilvus OpenAI embedding 函数
-                embedding_fn = model.OpenAIEmbeddingFunction(
+                embedding_fn = OpenAIEmbeddingFunction(
                     model_name=model_name,
                     api_key=openai_key
                 )
@@ -196,7 +196,7 @@ class MilvusTextSearchTool(Tool):
                 azure_base_url = f"{azure_endpoint.rstrip('/')}/openai/deployments/{model_name}"
                 
                 # 尝试创建支持自定义 base_url 的 embedding 函数
-                embedding_fn = model.OpenAIEmbeddingFunction(
+                embedding_fn = OpenAIEmbeddingFunction(
                     model_name=model_name,
                     api_key=azure_key,
                     base_url=azure_base_url  # 尝试传递 base_url
