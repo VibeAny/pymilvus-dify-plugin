@@ -1,16 +1,16 @@
 identity:
   name: "milvus_text_search"
-  author: "zeroz-lab"
+  author: "AI Plugin Developer"
   label:
-    en_US: "Text Semantic Search"
-    zh_Hans: "文本语义搜索"
-    pt_BR: "Busca Semântica de Texto"
+    en_US: "Text Search"
+    zh_Hans: "文本搜索"
+    pt_BR: "Busca de Texto"
 description:
   human:
-    en_US: "Perform semantic search by converting text query to vector and searching in Milvus collection"
-    zh_Hans: "通过将文本查询转换为向量并在 Milvus 集合中搜索来执行语义搜索"
-    pt_BR: "Realizar busca semântica convertendo consulta de texto em vetor e pesquisando na coleção Milvus"
-  llm: "A tool for performing semantic text search by automatically converting text queries to vectors and searching in Milvus collections"
+    en_US: "Perform semantic text search using Dify's built-in embedding models and Milvus vector search"
+    zh_Hans: "使用 Dify 内置嵌入模型和 Milvus 向量搜索执行语义文本搜索"
+    pt_BR: "Realizar busca semântica de texto usando modelos de embedding integrados do Dify e busca vetorial do Milvus"
+  llm: "A tool for performing semantic text search by leveraging Dify's integrated embedding models with Milvus vector search capabilities"
 parameters:
   - name: collection_name
     type: string
@@ -33,11 +33,29 @@ parameters:
       zh_Hans: "搜索查询"
       pt_BR: "Consulta de Busca"
     human_description:
-      en_US: "The text query to search for (will be automatically converted to vector)"
-      zh_Hans: "要搜索的文本查询（将自动转换为向量）"
-      pt_BR: "A consulta de texto para pesquisar (será automaticamente convertida em vetor)"
-    llm_description: "The text query that will be automatically converted to vector for semantic search"
+      en_US: "The text query to search for (will be automatically converted to vector using Dify models)"
+      zh_Hans: "要搜索的文本查询（将使用 Dify 模型自动转换为向量）"
+      pt_BR: "A consulta de texto para pesquisar (será automaticamente convertida em vetor usando modelos Dify)"
+    llm_description: "The text query that will be automatically converted to vector using Dify's embedding models"
     form: llm
+  - name: model
+    type: model-selector
+    scope: text-embedding
+    required: true
+    label:
+      en_US: "Embedding Model"
+      zh_Hans: "嵌入模型"
+      pt_BR: "Modelo de Embedding"
+    human_description:
+      en_US: "Select the embedding model from your Dify workspace (should match the model used when creating the collection)"
+      zh_Hans: "从您的 Dify 工作区选择嵌入模型（应与创建集合时使用的模型匹配）"
+      pt_BR: "Selecione o modelo de embedding do seu workspace Dify (deve corresponder ao modelo usado ao criar a coleção)"
+    llm_description: "Embedding model configured in Dify workspace for query vectorization (must match collection's embedding model)"
+    placeholder:
+      en_US: "Please select an embedding model"
+      zh_Hans: "请选择一个嵌入模型"
+      pt_BR: "Por favor, selecione um modelo de embedding"
+    form: form
   - name: limit
     type: number
     required: false
@@ -78,36 +96,6 @@ parameters:
       pt_BR: "Expressão de filtro para campos escalares (ex: 'category == \"tech\" and date > \"2024-01-01\"')"
     llm_description: "Boolean expression for filtering results based on scalar fields"
     form: llm
-  - name: embedding_model
-    type: select
-    required: false
-    default: "text-embedding-3-small"
-    label:
-      en_US: "Embedding Model"
-      zh_Hans: "嵌入模型"
-      pt_BR: "Modelo de Embedding"
-    human_description:
-      en_US: "The embedding model to use for query vectorization (must match collection's embedding model)"
-      zh_Hans: "用于查询向量化的嵌入模型（必须与集合的嵌入模型匹配）"
-      pt_BR: "O modelo de embedding para usar na vetorização da consulta (deve corresponder ao modelo de embedding da coleção)"
-    llm_description: "Embedding model to use for query vectorization (should match the model used for collection data)"
-    form: form
-    options:
-      - value: "text-embedding-3-small"
-        label:
-          en_US: "OpenAI text-embedding-3-small (1536 dim)"
-          zh_Hans: "OpenAI text-embedding-3-small (1536维)"
-          pt_BR: "OpenAI text-embedding-3-small (1536 dim)"
-      - value: "text-embedding-3-large"
-        label:
-          en_US: "OpenAI text-embedding-3-large (3072 dim)"
-          zh_Hans: "OpenAI text-embedding-3-large (3072维)"
-          pt_BR: "OpenAI text-embedding-3-large (3072 dim)"
-      - value: "text-embedding-ada-002"
-        label:
-          en_US: "OpenAI text-embedding-ada-002 (1536 dim)"
-          zh_Hans: "OpenAI text-embedding-ada-002 (1536维)"
-          pt_BR: "OpenAI text-embedding-ada-002 (1536 dim)"
   - name: anns_field
     type: string
     required: false

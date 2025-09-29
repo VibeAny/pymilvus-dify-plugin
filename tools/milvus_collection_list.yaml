@@ -1,0 +1,20 @@
+identity:
+  name: milvus_collection_list
+  author: vibeany
+  label:
+    en_US: List Milvus Collections
+    zh_Hans: 列出 Milvus 集合
+    pt_BR: Listar Coleções Milvus
+
+description:
+  human:
+    en_US: List all collections in the connected Milvus database using PyMilvus gRPC API. Returns collection names and count.
+    zh_Hans: 使用 PyMilvus gRPC API 列出连接的 Milvus 数据库中的所有集合，返回集合名称和数量。
+    pt_BR: Lista todas as coleções no banco de dados Milvus conectado usando PyMilvus gRPC API. Retorna nomes de coleções e contagem.
+  llm: A tool for listing all collections in the Milvus database using PyMilvus gRPC API
+
+parameters: []  # No input parameters required for listing collections
+
+extra:
+  python:
+    source: tools/milvus_collection_list.py

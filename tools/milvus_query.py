@@ -1,146 +1,99 @@
-from typing import Any, List, Union
+"""
+Milvus Query Tool
+
+Queries data from a Milvus collection using PyMilvus client.
+This tool replaces HTTP API calls with pure PyMilvus gRPC operations.
+"""
+from typing import Any
 from collections.abc import Generator
+import json
+import logging
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
 
+logger = logging.getLogger(__name__)
 
-class MilvusQueryTool(MilvusBaseTool, Tool):
-    """Milvus 数据查询工具"""
-    
+
+class MilvusQueryTool(Tool):
+    """Tool for querying data from Milvus collections"""
+
+    def __init__(self, runtime=None, session=None):
+        super().__init__(runtime, session)
+        self.runtime = runtime
+        self.session = session
+        self.base_tool = MilvusBaseTool()
+
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Query data from a Milvus collection
+        
+        Args:
+            tool_parameters: Contains collection_name, filter, and query parameters
+            
+        Returns:
+            Generator yielding ToolInvokeMessage with query results
+        """
+        logger.info(f"🚀 [DEBUG] MilvusQueryTool._invoke() called with params: {tool_parameters}")
+        
         try:
             collection_name = tool_parameters.get("collection_name")
+            filter_expr = tool_parameters.get("filter")
+            limit = tool_parameters.get("limit", 100)
             
             if not collection_name:
-                raise ValueError("Collection name is required")
+                raise ValueError("collection_name is required")
             
-            if not self._validate_collection_name(collection_name):
-                raise ValueError("Invalid collection name format")
+            logger.info(f"🔍 [DEBUG] Querying collection: {collection_name}")
+            logger.info("🔗 [DEBUG] Attempting to connect to Milvus...")
             
-            with self._get_milvus_client(self.runtime.credentials) as client:
-                # 检查集合是否存在
+            with self.base_tool._get_milvus_client(self.runtime.credentials) as client:
+                logger.info("✅ [DEBUG] Successfully connected to Milvus")
+                
+                # Check if collection exists
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist")
                 
-                result = self._perform_query(client, collection_name, tool_parameters)
-                yield from self._create_success_message(result)
+                # Perform query
+                query_result = client.query(
+                    collection_name=collection_name,
+                    filter=filter_expr,
+                    limit=int(limit),
+                    output_fields=tool_parameters.get("output_fields")
+                )
+                
+                logger.info(f"✅ [DEBUG] Query completed: {len(query_result)} results found")
+                
+                # Prepare response
+                response = {
+                    "success": True,
+                    "collection_name": collection_name,
+                    "query_results": query_result,
+                    "result_count": len(query_result)
+                }
+                
+                logger.info(f"✅ [DEBUG] Operation completed successfully")
+                yield self.create_json_message(response)
                 
         except Exception as e:
+            logger.error(f"❌ [DEBUG] Error in _invoke(): {type(e).__name__}: {str(e)}", exc_info=True)
             yield from self._handle_error(e)
     
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
-        """统一的错误处理"""
+        """Handle and format errors consistently"""
+        logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
+        
         error_msg = str(error)
-        yield self.create_json_message({
+        response = {
             "success": False,
             "error": error_msg,
             "error_type": type(error).__name__
-        })
-    
-    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
-        """创建成功响应消息"""
-        response = {
-            "success": True,
-            **data
         }
+        
+        logger.debug(f"📤 [DEBUG] Sending error response: {response}")
         yield self.create_json_message(response)
-    
-    def _perform_query(self, client, collection_name: str, params: dict[str, Any]) -> dict[str, Any]:
-        """执行数据查询"""
-        # 获取查询参数
-        ids = params.get("ids")
-        filter_expr = params.get("filter")
-        
-        # 必须提供 ids 或 filter 之一
-        if not ids and not filter_expr:
-            raise ValueError("Either 'ids' or 'filter' must be provided")
-        
-        # 获取输出字段
-        output_fields = params.get("output_fields")
-        if output_fields and isinstance(output_fields, str):
-            output_fields = [field.strip() for field in output_fields.split(",") if field.strip()]
-        elif not output_fields:
-            output_fields = None
-        
-        # 获取分区名称（可选）
-        partition_names = params.get("partition_names")
-        if partition_names and isinstance(partition_names, str):
-            partition_names = [name.strip() for name in partition_names.split(",") if name.strip()]
-        
-        # 获取限制数量
-        limit = params.get("limit")
-        if limit:
-            try:
-                limit = int(limit)
-            except (ValueError, TypeError):
-                limit = None
-        
-        # 解析 ids 参数
-        if ids:
-            ids = self._parse_ids(ids)
-        
-        try:
-            # 执行查询
-            if ids:
-                # 按 ID 查询 - 使用 get 方法
-                results = client.get(
-                    collection_name=collection_name,
-                    ids=ids,
-                    output_fields=output_fields,
-                    partition_names=partition_names
-                )
-            else:
-                # 按条件查询 - 使用 query 方法
-                results = client.query(
-                    collection_name=collection_name,
-                    filter=filter_expr,
-                    output_fields=output_fields,
-                    partition_names=partition_names,
-                    limit=limit
-                )
-            
-            return {
-                "operation": "query",
-                "collection_name": collection_name,
-                "query_type": "by_ids" if ids else "by_filter",
-                "ids": ids,
-                "filter": filter_expr,
-                "output_fields": output_fields,
-                "partition_names": partition_names,
-                "limit": limit,
-                "results": results,
-                "result_count": len(results) if results else 0
-            }
-            
-        except Exception as e:
-            raise ValueError(f"Query failed: {str(e)}")
-    
-    def _parse_ids(self, ids: Union[str, List]) -> List:
-        """解析 ID 列表"""
-        if isinstance(ids, str):
-            try:
-                import json
-                parsed_ids = json.loads(ids)
-            except json.JSONDecodeError:
-                # 尝试按逗号分隔解析
-                parsed_ids = [id_str.strip() for id_str in ids.split(",") if id_str.strip()]
-        else:
-            parsed_ids = ids
-        
-        if not isinstance(parsed_ids, list):
-            raise ValueError("IDs must be a list")
-        
-        if not parsed_ids:
-            raise ValueError("IDs list cannot be empty")
-        
-        # 尝试转换为数字（如果可能）
-        converted_ids = []
-        for id_val in parsed_ids:
-            if isinstance(id_val, str) and id_val.isdigit():
-                converted_ids.append(int(id_val))
-            else:
-                converted_ids.append(id_val)
-        
-        return converted_ids 
+
+
+# Module level debug info
+logger.info("📦 [DEBUG] milvus_query.py module loaded")

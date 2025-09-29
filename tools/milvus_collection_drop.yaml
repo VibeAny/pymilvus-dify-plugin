@@ -1,0 +1,46 @@
+identity:
+  name: milvus_collection_drop
+  author: vibeany
+  label:
+    en_US: Drop Milvus Collection
+    zh_Hans: 删除 Milvus 集合
+    pt_BR: Excluir Coleção Milvus
+
+description:
+  human:
+    en_US: Delete an existing Milvus collection permanently using PyMilvus gRPC API. This operation is irreversible and will remove all data in the collection.
+    zh_Hans: 使用 PyMilvus gRPC API 永久删除现有的 Milvus 集合。此操作不可逆转，将删除集合中的所有数据。
+    pt_BR: Exclua permanentemente uma coleção Milvus existente usando PyMilvus gRPC API. Esta operação é irreversível e removerá todos os dados da coleção.
+  llm: A tool for permanently deleting a Milvus collection using PyMilvus gRPC API. This is an irreversible operation.
+
+parameters:
+  - name: collection_name
+    type: string
+    required: true
+    label:
+      en_US: Collection Name
+      zh_Hans: 集合名称
+      pt_BR: Nome da Coleção
+    human_description:
+      en_US: Name of the Milvus collection to delete
+      zh_Hans: 要删除的 Milvus 集合名称
+      pt_BR: Nome da coleção Milvus para excluir
+    form: llm
+
+  - name: confirm_delete
+    type: boolean
+    required: true
+    default: false
+    label:
+      en_US: Confirm Deletion
+      zh_Hans: 确认删除
+      pt_BR: Confirmar Exclusão
+    human_description:
+      en_US: Must be set to true to confirm permanent deletion of the collection
+      zh_Hans: 必须设置为 true 以确认永久删除集合
+      pt_BR: Deve ser definido como true para confirmar a exclusão permanente da coleção
+    form: form
+
+extra:
+  python:
+    source: tools/milvus_collection_drop.py

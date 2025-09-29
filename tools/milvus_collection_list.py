@@ -1,13 +1,12 @@
 """
-Milvus Insert Tool
+Milvus Collection List Tool
 
-Inserts vector data into a Milvus collection using PyMilvus client.
+Lists all collections in the connected Milvus database using PyMilvus client.
 This tool replaces HTTP API calls with pure PyMilvus gRPC operations.
 """
 from typing import Any
 from collections.abc import Generator
 import logging
-import json
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
@@ -16,8 +15,8 @@ from .milvus_base import MilvusBaseTool
 logger = logging.getLogger(__name__)
 
 
-class MilvusInsertTool(Tool):
-    """Tool for inserting data into Milvus collections"""
+class MilvusCollectionListTool(Tool):
+    """Tool for listing all collections in Milvus database"""
     
     def __init__(self, runtime=None, session=None):
         super().__init__(runtime, session)
@@ -27,56 +26,31 @@ class MilvusInsertTool(Tool):
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         """
-        Insert data into a Milvus collection
+        List all collections in the Milvus database
         
         Args:
-            tool_parameters: Contains collection_name and data parameters
+            tool_parameters: Empty dict - no parameters needed for listing
             
         Returns:
-            Generator yielding ToolInvokeMessage with insertion result
+            Generator yielding ToolInvokeMessage with collection list and count
         """
-        logger.info(f"🚀 [DEBUG] MilvusInsertTool._invoke() called with params: {tool_parameters}")
+        logger.info("🚀 [DEBUG] MilvusCollectionListTool._invoke() called")
         
         try:
-            collection_name = tool_parameters.get("collection_name")
-            data = tool_parameters.get("data")
-            
-            if not collection_name:
-                raise ValueError("collection_name is required")
-            
-            if not data:
-                raise ValueError("data is required and cannot be empty")
-            
-            # Parse data if it's a string
-            if isinstance(data, str):
-                try:
-                    data = json.loads(data)
-                except json.JSONDecodeError:
-                    raise ValueError("data must be valid JSON array")
-            
-            if not isinstance(data, list) or len(data) == 0:
-                raise ValueError("data is required and cannot be empty")
-            
-            logger.info(f"📊 [DEBUG] Inserting {len(data)} records into collection: {collection_name}")
             logger.info("🔗 [DEBUG] Attempting to connect to Milvus...")
             
             with self.base_tool._get_milvus_client(self.runtime.credentials) as client:
                 logger.info("✅ [DEBUG] Successfully connected to Milvus")
                 
-                # Check if collection exists
-                if not client.has_collection(collection_name):
-                    raise ValueError(f"Collection '{collection_name}' does not exist")
-                
-                # Insert data
-                insert_result = client.insert(collection_name, data)
-                logger.info(f"✅ [DEBUG] Data inserted successfully: {insert_result}")
+                # List all collections
+                collections = client.list_collections()
+                logger.info(f"📋 [DEBUG] Found {len(collections)} collections: {collections}")
                 
                 # Prepare response
                 response = {
                     "success": True,
-                    "collection_name": collection_name,
-                    "insert_count": insert_result.get("insert_count", len(data)),
-                    "ids": insert_result.get("ids", [])
+                    "collections": collections,
+                    "count": len(collections)
                 }
                 
                 logger.info(f"✅ [DEBUG] Operation completed successfully, result: {response}")
@@ -102,4 +76,4 @@ class MilvusInsertTool(Tool):
 
 
 # Module level debug info
-logger.info("📦 [DEBUG] milvus_insert.py module loaded") 
+logger.info("📦 [DEBUG] milvus_collection_list.py module loaded")

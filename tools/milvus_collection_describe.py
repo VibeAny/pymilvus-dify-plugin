@@ -1,12 +1,11 @@
 """
-Milvus Vector Search Tool
+Milvus Collection Describe Tool
 
-Performs vector similarity search in a Milvus collection using PyMilvus client.
+Gets detailed information about a Milvus collection schema and configuration using PyMilvus client.
 This tool replaces HTTP API calls with pure PyMilvus gRPC operations.
 """
 from typing import Any
 from collections.abc import Generator
-import json
 import logging
 
 from dify_plugin import Tool
@@ -16,49 +15,33 @@ from .milvus_base import MilvusBaseTool
 logger = logging.getLogger(__name__)
 
 
-class MilvusSearchTool(Tool):
-    """Tool for vector similarity search in Milvus collections"""
-
+class MilvusCollectionDescribeTool(Tool):
+    """Tool for describing Milvus collection schema and configuration"""
+    
     def __init__(self, runtime=None, session=None):
         super().__init__(runtime, session)
         self.runtime = runtime
         self.session = session
         self.base_tool = MilvusBaseTool()
-
+    
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         """
-        Perform vector similarity search
+        Describe a Milvus collection
         
         Args:
-            tool_parameters: Contains collection_name, query_vector, and search parameters
+            tool_parameters: Contains collection_name parameter
             
         Returns:
-            Generator yielding ToolInvokeMessage with search results
+            Generator yielding ToolInvokeMessage with collection description
         """
-        logger.info(f"🚀 [DEBUG] MilvusSearchTool._invoke() called with params: {tool_parameters}")
+        logger.info(f"🚀 [DEBUG] MilvusCollectionDescribeTool._invoke() called with params: {tool_parameters}")
         
         try:
             collection_name = tool_parameters.get("collection_name")
-            query_vector = tool_parameters.get("query_vector")
-            limit = tool_parameters.get("limit", 10)
             
             if not collection_name:
                 raise ValueError("collection_name is required")
             
-            if not query_vector:
-                raise ValueError("query_vector is required")
-            
-            # Parse query vector if it's a string
-            if isinstance(query_vector, str):
-                try:
-                    query_vector = json.loads(query_vector)
-                except json.JSONDecodeError:
-                    raise ValueError("query_vector must be valid JSON array")
-            
-            if not isinstance(query_vector, list):
-                raise ValueError("query_vector must be a list of numbers")
-            
-            logger.info(f"🔍 [DEBUG] Searching in collection: {collection_name}")
             logger.info("🔗 [DEBUG] Attempting to connect to Milvus...")
             
             with self.base_tool._get_milvus_client(self.runtime.credentials) as client:
@@ -68,25 +51,18 @@ class MilvusSearchTool(Tool):
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist")
                 
-                # Perform vector search
-                search_result = client.vector_search(
-                    collection_name=collection_name,
-                    data=[query_vector],
-                    limit=int(limit),
-                    output_fields=tool_parameters.get("output_fields")
-                )
-                
-                logger.info(f"✅ [DEBUG] Search completed: {len(search_result)} results found")
+                # Get collection description
+                description = client.describe_collection(collection_name)
+                logger.info(f"📄 [DEBUG] Collection description retrieved: {description}")
                 
                 # Prepare response
                 response = {
                     "success": True,
                     "collection_name": collection_name,
-                    "search_results": search_result[0] if search_result else [],
-                    "result_count": len(search_result[0]) if search_result else 0
+                    "description": description
                 }
                 
-                logger.info(f"✅ [DEBUG] Operation completed successfully")
+                logger.info(f"✅ [DEBUG] Operation completed successfully, result: {response}")
                 yield self.create_json_message(response)
                 
         except Exception as e:
@@ -109,4 +85,4 @@ class MilvusSearchTool(Tool):
 
 
 # Module level debug info
-logger.info("📦 [DEBUG] milvus_search.py module loaded")
+logger.info("📦 [DEBUG] milvus_collection_describe.py module loaded")

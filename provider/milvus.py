@@ -1,185 +1,263 @@
-from typing import Any
-import requests
-import time
+"""
+PyMilvus-based Provider for Milvus Vector Database
 
-from dify_plugin import ToolProvider
-from dify_plugin.errors.tool import ToolProviderCredentialValidationError
+This provider integrates with Dify's model system for text embedding functionality.
+Only Milvus connection credentials are required - embedding models are managed by Dify.
+"""
+from typing import Any
+
+# Import logging and custom handler for debugging
+import logging
+from dify_plugin.config.logger_format import plugin_logger_handler
+
+# Set up logging with the custom handler
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(plugin_logger_handler)
+
+# Configure proxy BEFORE importing PyMilvus to ensure proper initialization
+import os
+http_proxy = os.environ.get('SANDBOX_HTTP_PROXY') or os.environ.get('SSRF_PROXY_HTTP_URL')
+https_proxy = os.environ.get('SANDBOX_HTTPS_PROXY') or os.environ.get('SSRF_PROXY_HTTPS_URL')
+
+if http_proxy or https_proxy:
+    logger.info(f"🌐 [DEBUG] Setting up proxy BEFORE PyMilvus import - HTTP: {http_proxy}, HTTPS: {https_proxy}")
+    if http_proxy:
+        os.environ['HTTP_PROXY'] = http_proxy
+    if https_proxy:
+        os.environ['HTTPS_PROXY'] = https_proxy
+    logger.info("✅ [DEBUG] Global proxy environment configured")
+else:
+    logger.info("ℹ️ [DEBUG] No proxy environment detected")
+
+def test_milvus_connection(uri: str, user: str, password: str, database: str) -> tuple:
+    """Test MilvusClient connection - standalone function for multiprocessing"""
+    try:
+        from pymilvus import MilvusClient
+        client = MilvusClient(
+            uri=uri,
+            user=user, 
+            password=password,
+            db_name=database
+        )
+        # Test the connection
+        collections = client.list_collections()
+        return ('success', len(collections))
+    except Exception as e:
+        return ('error', str(e))
+
+# Use conditional imports for testing compatibility
+logger.info("🔄 [DEBUG] About to import PyMilvus and Dify plugin modules")
+try:
+    logger.info("🔄 [DEBUG] Importing PyMilvus MilvusClient...")
+    from pymilvus import MilvusClient
+    logger.info("✅ [DEBUG] PyMilvus MilvusClient imported successfully")
+    
+    logger.info("🔄 [DEBUG] Importing Dify ToolProvider...")
+    from dify_plugin import ToolProvider
+    logger.info("✅ [DEBUG] Dify ToolProvider imported successfully")
+    
+    logger.info("🔄 [DEBUG] Importing Dify ToolProviderCredentialValidationError...")
+    from dify_plugin.errors.tool import ToolProviderCredentialValidationError
+    logger.info("✅ [DEBUG] Dify ToolProviderCredentialValidationError imported successfully")
+    
+    logger.info("🔧 [DEBUG] Successfully imported ALL PyMilvus and Dify plugin modules")
+except ImportError as e:
+    # For testing - these will be mocked
+    logger.warning(f"⚠️ [DEBUG] Import failed, using mock objects: {e}")
+    MilvusClient = None
+    ToolProvider = object
+    ToolProviderCredentialValidationError = Exception
 
 
 class MilvusProvider(ToolProvider):
+    def __init__(self):
+        super().__init__()
+        logger.info("🚀 [DEBUG] MilvusProvider initialized")
+    
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        """Validate Milvus connection and embedding provider configuration"""
-        validation_errors = []
+        """Validate credentials using PyMilvus client"""
+        logger.info("🔍 [DEBUG] Starting credential validation")
+        logger.info(f"📋 [DEBUG] Received credentials keys: {list(credentials.keys())}")
         
         try:
-            # 1. Validate Milvus connection
-            try:
-                self._validate_milvus_connection(credentials)
-            except ToolProviderCredentialValidationError as e:
-                validation_errors.append(f"Milvus Connection: {str(e)}")
-            
-            # 2. Validate embedding provider configuration
-            try:
-                self._validate_embedding_provider(credentials)
-            except ToolProviderCredentialValidationError as e:
-                validation_errors.append(f"Embedding Provider: {str(e)}")
-            
-            # If there are any validation errors, raise combined error
-            if validation_errors:
-                error_message = " | ".join(validation_errors)
-                raise ToolProviderCredentialValidationError(error_message)
-                
-        except ToolProviderCredentialValidationError:
-            raise
+            # Only validate Milvus connection - embedding models are managed by Dify
+            logger.info("🏁 [DEBUG] About to start Milvus connection validation")
+            self._validate_milvus_connection(credentials)
+            logger.info("✅ [DEBUG] Credential validation completed successfully")
         except Exception as e:
-            raise ToolProviderCredentialValidationError(f"Configuration validation failed: {str(e)}")
+            logger.error(f"❌ [DEBUG] Credential validation failed: {type(e).__name__}: {str(e)}")
+            raise
     
     def _validate_milvus_connection(self, credentials: dict[str, Any]) -> None:
-        """验证 Milvus 数据库连接"""
-        # 获取连接参数
+        """Validate Milvus connection using PyMilvus with timeout protection"""
+        logger.info("🔌 [DEBUG] Starting Milvus connection validation")
+        
+        # Check if MilvusClient was imported successfully
+        if MilvusClient is None:
+            logger.error("❌ [DEBUG] MilvusClient is None - PyMilvus not available")
+            raise ToolProviderCredentialValidationError("PyMilvus library is not available")
+        
         uri = credentials.get("uri")
-        token = credentials.get("token")
+        user = credentials.get("user") 
+        password = credentials.get("password")
         database = credentials.get("database", "default")
         
+        logger.info(f"🌐 [DEBUG] Connection details - URI: {uri}, User: {user}, Database: {database}")
+        
+        # Check required fields
         if not uri:
-            raise ToolProviderCredentialValidationError("URI is required")
+            logger.error("❌ [DEBUG] Missing URI")
+            raise ToolProviderCredentialValidationError("Milvus URI is required")
+        if not user:
+            logger.error("❌ [DEBUG] Missing username")
+            raise ToolProviderCredentialValidationError("Username is required")
+        if not password:
+            logger.error("❌ [DEBUG] Missing password")
+            raise ToolProviderCredentialValidationError("Password is required")
         
-        # 确保 URI 格式正确
-        if not uri.startswith(("http://", "https://")):
-            uri = f"http://{uri}"
+        # Validate and fix URI format for PyMilvus gRPC client
+        logger.info("🔧 [DEBUG] Validating URI format for PyMilvus gRPC client")
         
-        # 移除末尾的斜杠
-        uri = uri.rstrip('/')
-        
-        # 创建 HTTP 会话
-        session = requests.Session()
-        session.headers.update({
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        })
-        
-        # 设置认证
-        if token:
-            session.headers['Authorization'] = f'Bearer {token}'
-        
-        # 测试连接 - 尝试列出集合
-        test_url = f"{uri}/v2/vectordb/collections/list"
-        
-        try:
-            response = session.post(test_url, json={}, timeout=10.0)
-            
-            # 检查 HTTP 状态码
-            if response.status_code != 200:
-                raise ToolProviderCredentialValidationError(
-                    f"Failed to connect to Milvus server. HTTP {response.status_code}: {response.text}"
-                )
-            
-            # 解析响应
-            result = response.json()
-            
-            # 检查 Milvus 响应码
-            if result.get('code') != 0:
-                error_msg = result.get('message', 'Unknown error')
-                raise ToolProviderCredentialValidationError(
-                    f"Milvus API error: {error_msg}"
-                )
-            
-        except requests.exceptions.RequestException as e:
-            raise ToolProviderCredentialValidationError(
-                f"Network error connecting to Milvus: {str(e)}"
-            )
-        finally:
-            session.close()
-    
-    def _validate_embedding_provider(self, credentials: dict[str, Any]) -> None:
-        """验证 Embedding 提供商配置"""
-        embedding_provider = credentials.get("embedding_provider", "openai")
-        
-        # 只在用户实际配置了 API Key 时才验证
-        if embedding_provider == "openai":
-            api_key = credentials.get("openai_api_key")
-            if api_key:  # 只有配置了 API Key 才验证
-                self._validate_openai_credentials(credentials)
-        elif embedding_provider == "azure_openai":
-            api_key = credentials.get("azure_openai_api_key")
-            endpoint = credentials.get("azure_openai_endpoint")
-            if api_key and endpoint:  # 只有配置了完整信息才验证
-                self._validate_azure_openai_credentials(credentials)
-    
-    def _validate_openai_credentials(self, credentials: dict[str, Any]) -> None:
-        """验证 OpenAI API 配置"""
-        api_key = credentials.get("openai_api_key")
-        
-        if not api_key:
-            raise ToolProviderCredentialValidationError(
-                "OpenAI API Key is required when using OpenAI provider"
-            )
-        
-        # 测试 OpenAI API
-        try:
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            # 使用最简单的模型列表 API 来验证
-            response = requests.get(
-                "https://api.openai.com/v1/models", 
-                headers=headers, 
-                timeout=10.0
-            )
-            
-            if response.status_code != 200:
-                raise ToolProviderCredentialValidationError(
-                    f"OpenAI API Key validation failed - HTTP {response.status_code}: {response.text}"
-                )
+        # PyMilvus requires URI to start with [unix, http, https, tcp] or be a local .db file
+        original_uri = uri
+        if uri.startswith("https://"):
+            # Keep HTTPS format - PyMilvus supports it
+            logger.info(f"✅ [DEBUG] URI already in HTTPS format: {uri}")
+        elif uri.startswith("http://"):
+            # Keep HTTP format - PyMilvus supports it  
+            logger.info(f"✅ [DEBUG] URI already in HTTP format: {uri}")
+        elif uri.startswith("tcp://"):
+            # Keep TCP format - PyMilvus supports it
+            logger.info(f"✅ [DEBUG] URI already in TCP format: {uri}")
+        elif uri.startswith("unix://"):
+            # Keep Unix format - PyMilvus supports it
+            logger.info(f"✅ [DEBUG] URI already in Unix format: {uri}")
+        else:
+            # Plain host:port format - convert to HTTPS (most common for cloud Milvus)
+            if ":" in uri:
+                logger.info(f"🔧 [DEBUG] Converting plain host:port to HTTPS: {uri}")
+                uri = f"https://{uri}"
+            else:
+                # Plain hostname - add default port and HTTPS
+                logger.info(f"🔧 [DEBUG] Converting plain hostname to HTTPS with port 443: {uri}")
+                uri = f"https://{uri}:443"
                 
-        except requests.exceptions.RequestException as e:
-            raise ToolProviderCredentialValidationError(
-                f"Failed to validate OpenAI API Key: {str(e)}"
-            )
-    
-    def _validate_azure_openai_credentials(self, credentials: dict[str, Any]) -> None:
-        """验证 Azure OpenAI API 配置"""
-        endpoint = credentials.get("azure_openai_endpoint")
-        api_key = credentials.get("azure_openai_api_key")
-        api_version = credentials.get("azure_api_version", "2023-12-01-preview")
+        logger.info(f"✅ [DEBUG] Final URI for PyMilvus: {uri} (original: {original_uri})")
         
-        if not endpoint:
-            raise ToolProviderCredentialValidationError(
-                "Azure OpenAI Endpoint is required when using Azure OpenAI provider"
-            )
+        logger.info("📋 [DEBUG] All required fields present, proceeding with connection test")
         
-        if not api_key:
-            raise ToolProviderCredentialValidationError(
-                "Azure OpenAI API Key is required when using Azure OpenAI provider"
-            )
-        
-        # 测试 Azure OpenAI API
+        # Direct connection test with global proxy configuration
+        logger.info("🔧 [DEBUG] Starting direct connection test")
         try:
-            endpoint = endpoint.rstrip('/')
-            headers = {
-                "api-key": api_key,
-                "Content-Type": "application/json"
-            }
+            logger.info("🧪 [DEBUG] Testing PyMilvus import in current context...")
+            import pymilvus
+            logger.info(f"✅ [DEBUG] PyMilvus version in context: {pymilvus.__version__}")
             
-            # 使用 deployments 列表 API 来验证
-            test_url = f"{endpoint}/openai/deployments"
-            params = {"api-version": api_version}
+            # Test MilvusClient class access
+            logger.info("🧪 [DEBUG] Testing MilvusClient class access...")
+            client_class = pymilvus.MilvusClient
+            logger.info(f"✅ [DEBUG] MilvusClient class: {client_class}")
             
-            response = requests.get(
-                test_url,
-                headers=headers,
-                params=params,
-                timeout=10.0
-            )
+            logger.info("🔧 [DEBUG] About to create PyMilvus client with parameters...")
+            logger.info(f"🔧 [DEBUG] URI: {uri}")
+            logger.info(f"🔧 [DEBUG] User: {user}")
+            logger.info(f"🔧 [DEBUG] Database: {database}")
+            logger.info("🔧 [DEBUG] Password: [MASKED]")
             
-            if response.status_code != 200:
-                raise ToolProviderCredentialValidationError(
-                    f"Azure OpenAI API validation failed - HTTP {response.status_code}: {response.text}"
-                )
+            # First test basic network connectivity before attempting MilvusClient
+            logger.info("🌐 [DEBUG] Testing basic network connectivity to domain...")
+            
+            import socket
+            import urllib.parse
+            
+            # Parse the URI to get hostname and port
+            parsed_uri = urllib.parse.urlparse(uri)
+            hostname = parsed_uri.hostname
+            port = parsed_uri.port or (443 if parsed_uri.scheme == 'https' else 80)
+            
+            logger.info(f"🔍 [DEBUG] Extracted hostname: {hostname}, port: {port}")
+            
+            # Test DNS resolution with timeout
+            try:
+                logger.info("🔎 [DEBUG] Testing DNS resolution...")
+                socket.setdefaulttimeout(3.0)  # 3 second DNS timeout
+                ip = socket.gethostbyname(hostname)
+                logger.info(f"✅ [DEBUG] DNS resolution successful: {hostname} -> {ip}")
+            except Exception as dns_e:
+                logger.error(f"❌ [DEBUG] DNS resolution failed: {dns_e}")
+                raise ToolProviderCredentialValidationError(f"Cannot resolve hostname {hostname}: {dns_e}")
+            
+            # Test TCP connection with timeout
+            try:
+                logger.info(f"🔌 [DEBUG] Testing TCP connection to {ip}:{port}...")
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(3.0)  # 3 second connection timeout
+                result = sock.connect_ex((ip, port))
+                sock.close()
+                if result == 0:
+                    logger.info(f"✅ [DEBUG] TCP connection successful to {ip}:{port}")
+                else:
+                    logger.error(f"❌ [DEBUG] TCP connection failed to {ip}:{port}, error code: {result}")
+                    raise ConnectionError(f"Cannot connect to {ip}:{port}")
+            except Exception as tcp_e:
+                logger.error(f"❌ [DEBUG] TCP connection test failed: {tcp_e}")
+                raise ToolProviderCredentialValidationError(f"Cannot connect to {hostname}:{port}: {tcp_e}")
+            
+            # Reset socket timeout for MilvusClient
+            socket.setdefaulttimeout(None)
+            
+            # Create PyMilvus client with signal-based timeout (more reliable than multiprocessing)
+            logger.info("🔧 [DEBUG] Network tests passed, attempting MilvusClient with signal-based timeout...")
+            
+            import signal
+            
+            def timeout_handler(signum, frame):
+                logger.error("⏰ [DEBUG] Signal timeout triggered")
+                raise TimeoutError("MilvusClient creation timed out")
+            
+            try:
+                # Set signal-based timeout
+                logger.info("⏰ [DEBUG] Setting 8-second signal timeout...")
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(8)  # 8 second timeout
                 
-        except requests.exceptions.RequestException as e:
-            raise ToolProviderCredentialValidationError(
-                f"Failed to validate Azure OpenAI API: {str(e)}"
-            )
+                # Try direct client creation with timeout protection
+                logger.info("🔄 [DEBUG] Creating MilvusClient directly...")
+                result_type, result_value = test_milvus_connection(uri, user, password, database)
+                
+                # Cancel the alarm
+                signal.alarm(0)
+                
+                if result_type == 'success':
+                    logger.info(f"✅ [DEBUG] MilvusClient connection successful, found {result_value} collections")
+                else:
+                    logger.error(f"❌ [DEBUG] MilvusClient creation failed: {result_value}")
+                    raise RuntimeError(result_value)
+                    
+            except TimeoutError:
+                signal.alarm(0)  # Cancel alarm
+                logger.error("⏰ [DEBUG] MilvusClient creation timed out after 8 seconds")
+                raise TimeoutError("MilvusClient creation timed out after 8 seconds")
+            except Exception as e:
+                signal.alarm(0)  # Cancel alarm
+                logger.error(f"❌ [DEBUG] MilvusClient creation failed: {e}")
+                raise e
+            logger.info("🎉 [DEBUG] Connection validation successful!")
+            
+        except Exception as e:
+            logger.error(f"❌ [DEBUG] Connection test failed: {type(e).__name__}: {str(e)}")
+            logger.error(f"❌ [DEBUG] Full exception details: {repr(e)}")
+            # Provide user-friendly error messages based on error type
+            error_msg = str(e)
+            if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                logger.error("🚫 [DEBUG] Raising authentication error")
+                raise ToolProviderCredentialValidationError("Authentication failed. Please check username and password.")
+            elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                logger.error("🌐 [DEBUG] Raising connection error")
+                raise ToolProviderCredentialValidationError("Cannot connect to Milvus server. Please check URI and network connectivity.")
+            else:
+                logger.error("⚠️ [DEBUG] Raising generic Milvus error")
+                raise ToolProviderCredentialValidationError(f"Milvus connection failed: {error_msg}")
+        
+        logger.info("🏁 [DEBUG] _validate_milvus_connection completed successfully")

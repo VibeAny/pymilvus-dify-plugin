@@ -1,266 +1,283 @@
+"""
+Milvus Text Embedding Tool using Dify's Built-in Model System
+
+This tool converts text to vector embeddings using Dify's model provider system,
+which allows using any configured embedding model in Dify without direct API calls.
+"""
 from typing import Any
 from collections.abc import Generator
 import logging
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
-from dify_plugin.errors.tool import ToolProviderCredentialValidationError
-from pymilvus.model.dense import OpenAIEmbeddingFunction
 from .milvus_base import MilvusBaseTool
 
 logger = logging.getLogger(__name__)
 
 
-class MilvusTextEmbeddingTool(MilvusBaseTool, Tool):
+class MilvusTextEmbeddingTool(Tool):
+    """Tool for converting text to embeddings using Dify's model system"""
+    
+    def __init__(self, runtime=None, session=None):
+        super().__init__(runtime, session)
+        self.runtime = runtime
+        self.session = session
+        self.base_tool = MilvusBaseTool()
+    
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         """
-        将文本转换为向量嵌入
+        Convert text to vector embedding using Dify's built-in model system
+        
+        Args:
+            tool_parameters: Contains text and optional model configuration
+            
+        Returns:
+            Generator yielding ToolInvokeMessage with embedding result
         """
         logger.info(f"🚀 [DEBUG] MilvusTextEmbeddingTool._invoke() called with params: {tool_parameters}")
         
         try:
-            # 获取参数
             text = tool_parameters.get("text", "").strip()
-            model_name = tool_parameters.get("model", "text-embedding-3-small")
+            model_config = tool_parameters.get("model")
             normalize = tool_parameters.get("normalize", True)
             
-            logger.debug(f"📋 [DEBUG] Text Embedding - Text: {text[:50]}..., Model: {model_name}")
-            
             if not text:
-                raise ValueError("Input text is required")
+                raise ValueError("Input text is required for embedding")
             
-            logger.info("🔗 [DEBUG] Attempting to connect to Milvus for text embedding...")
+            if not model_config:
+                raise ValueError("Model configuration is required (select an embedding model)")
             
-            # 使用 MilvusBaseTool 的连接方法进行连接验证
-            with self._get_milvus_client(self.runtime.credentials) as milvus_http_client:
-                logger.info("✅ [DEBUG] Successfully connected to Milvus for text embedding")
-                
-                # 获取向量嵌入
-                embedding_result = self._get_text_embedding(text, model_name)
-                
-                if not embedding_result["success"]:
-                    raise ValueError(f"Text embedding failed: {embedding_result['error']}")
-                
-                embedding_vector = embedding_result["embedding"]
-                
-                # 标准化向量（如果需要）
-                if normalize:
-                    embedding_vector = self._normalize_vector(embedding_vector)
-                
-                result_data = {
-                    "operation": "text_embedding",
-                    "text": text,
-                    "embedding": embedding_vector,
-                    "dimension": len(embedding_vector),
-                    "model": model_name,
-                    "normalized": normalize,
-                    "provider": embedding_result.get("provider", "PyMilvus"),
-                    "message": f"Successfully converted text to {len(embedding_vector)}-dimensional vector"
-                }
-                
-                logger.info(f"✅ [DEBUG] Text embedding successful: {len(embedding_vector)} dimensions")
-                yield from self._create_success_message(result_data)
-                
-        except Exception as e:
-            logger.error(f"❌ [DEBUG] Error in text embedding: {type(e).__name__}: {str(e)}", exc_info=True)
-            yield from self._handle_error(e)
-    
-    def _get_text_embedding(self, text: str, model_name: str) -> dict:
-        """
-        使用 PyMilvus 获取文本向量（支持 OpenAI 和 Azure OpenAI）
-        """
-        try:
-            credentials = self.runtime.credentials
-            embedding_provider = credentials.get("embedding_provider", "openai")
+            logger.info(f"📝 [DEBUG] Processing text embedding with model: {model_config}")
             
-            if embedding_provider == "openai":
-                return self._get_openai_embedding(text, model_name, credentials)
-            
-            elif embedding_provider == "azure_openai":
-                return self._get_azure_openai_embedding(text, model_name, credentials)
-            
-            else:
-                return {
-                    "success": False,
-                    "error": f"不支持的嵌入提供商: {embedding_provider}"
-                }
-                
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"文本向量化失败: {str(e)}"
-            }
-    
-    def _get_openai_embedding(self, text: str, model_name: str, credentials: dict) -> dict:
-        """
-        使用 PyMilvus + OpenAI 获取向量
-        """
-        try:
-            openai_key = credentials.get("openai_api_key")
-            
-            if not openai_key:
-                return {
-                    "success": False,
-                    "error": "OpenAI API Key 未配置，请在插件设置中添加"
-                }
-            
-            # 使用 PyMilvus OpenAI embedding 函数
-            embedding_fn = OpenAIEmbeddingFunction(
-                model_name=model_name,
-                api_key=openai_key
+            # Use Dify's model system to get embedding
+            embedding_result = self._get_dify_embedding(
+                text=text,
+                model_config=model_config
             )
             
-            # 获取向量
-            query_vectors = embedding_fn.encode_queries([text])
-            embedding_vector = query_vectors[0]
+            if not embedding_result["success"]:
+                raise ValueError(f"Text embedding failed: {embedding_result['error']}")
             
-            # 转换为列表
+            embedding_vector = embedding_result["embedding"]
+            
+            # Optional vector normalization
+            if normalize:
+                embedding_vector = self._normalize_vector(embedding_vector)
+            
+            # Build result data
+            result_data = {
+                "status": "success",
+                "operation": "text_embedding",
+                "text": text,
+                "embedding": embedding_vector,
+                "dimension": len(embedding_vector),
+                "model_provider": getattr(model_config, 'provider', 'unknown'),
+                "model_name": getattr(model_config, 'model', 'unknown'),
+                "normalized": normalize,
+                "usage": embedding_result.get("usage", {}),
+                "message": f"Successfully converted text to {len(embedding_vector)}-dimensional vector using Dify model system"
+            }
+            
+            logger.info(f"✅ [DEBUG] Text embedding completed successfully, dimension: {len(embedding_vector)}")
+            
+            yield self.create_json_message(result_data)
+            
+        except Exception as e:
+            logger.error(f"❌ [DEBUG] Error in text embedding: {type(e).__name__}: {str(e)}", exc_info=True)
+            
+            # Extract detailed error information if available
+            if hasattr(e, '__cause__') and e.__cause__ and "embedding_result" in str(e):
+                # This is likely an error from _get_dify_embedding
+                embedding_result = {"success": False, "error": str(e)}
+            else:
+                # Direct exception
+                embedding_result = {
+                    "success": False, 
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+            
+            # Create user-friendly error response
+            error_data = {
+                "status": "error",
+                "operation": "text_embedding",
+                "error": embedding_result.get("error", str(e)),
+                "error_type": embedding_result.get("error_type", type(e).__name__),
+                "message": f"Text embedding failed: {embedding_result.get('error', str(e))}",
+                "suggestion": embedding_result.get("suggestion", "Please check the input parameters and try again")
+            }
+            
+            yield self.create_json_message(error_data)
+    
+    def _get_dify_embedding(self, text: str, model_config) -> dict:
+        """
+        Get text embedding using Dify's built-in model system
+        
+        Args:
+            text: Input text to embed
+            model_config: Model configuration object from model-selector parameter
+            
+        Returns:
+            Dict with success status and embedding data
+        """
+        try:
+            logger.info(f"🔍 [DEBUG] Invoking embedding model: {model_config}")
+            
+            # Convert dict model_config to proper TextEmbeddingModelConfig object
+            from dify_plugin.entities.model.text_embedding import TextEmbeddingModelConfig
+            
+            if isinstance(model_config, dict):
+                # Extract provider and model from dict
+                provider = model_config.get('provider', '').split('/')[-1]  # Remove prefix like 'langgenius/azure_openai/'
+                model = model_config.get('model')
+                
+                # Create proper TextEmbeddingModelConfig object
+                model_config_obj = TextEmbeddingModelConfig(
+                    provider=provider,
+                    model=model
+                )
+            else:
+                # Already a proper object
+                model_config_obj = model_config
+            
+            # Use Dify's text_embedding API with proper model_config object
+            embedding_result = self.session.model.text_embedding.invoke(
+                model_config=model_config_obj,
+                texts=[text]
+            )
+            
+            if not embedding_result:
+                return {
+                    "success": False,
+                    "error": "Embedding model returned empty result"
+                }
+            
+            # Extract embedding vector from result
+            if hasattr(embedding_result, 'embeddings') and embedding_result.embeddings:
+                embedding_vector = embedding_result.embeddings[0]
+            elif isinstance(embedding_result, list) and embedding_result:
+                embedding_vector = embedding_result[0]
+            else:
+                return {
+                    "success": False,
+                    "error": "Unable to extract embedding vector from model result"
+                }
+            
+            # Convert to list if needed
             if hasattr(embedding_vector, 'tolist'):
                 embedding_vector = embedding_vector.tolist()
-            else:
+            elif not isinstance(embedding_vector, list):
                 embedding_vector = list(embedding_vector)
+            
+            # Extract usage information if available
+            usage_info = {}
+            if hasattr(embedding_result, 'usage'):
+                usage_info = {
+                    "tokens": getattr(embedding_result.usage, 'total_tokens', 0),
+                    "prompt_tokens": getattr(embedding_result.usage, 'prompt_tokens', 0)
+                }
+            
+            logger.info(f"✅ [DEBUG] Embedding generated successfully, dimension: {len(embedding_vector)}")
             
             return {
                 "success": True,
                 "embedding": embedding_vector,
-                "provider": "PyMilvus + OpenAI"
+                "usage": usage_info,
+                "provider": f"Dify ({getattr(model_config, 'provider', 'unknown')})",
+                "model": getattr(model_config, 'model', 'unknown')
             }
             
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"PyMilvus OpenAI embedding 调用失败: {str(e)}"
-            }
-    
-    def _get_azure_openai_embedding(self, text: str, model_name: str, credentials: dict) -> dict:
-        """
-        尝试使用 PyMilvus + Azure OpenAI，如果不支持则使用直接 API 调用
-        """
-        try:
-            azure_endpoint = credentials.get("azure_openai_endpoint")
-            azure_key = credentials.get("azure_openai_api_key")
-            api_version = credentials.get("azure_api_version", "2023-12-01-preview")
+            error_msg = str(e)
+            logger.error(f"❌ [DEBUG] Dify embedding failed: {error_msg}", exc_info=True)
             
-            if not azure_endpoint or not azure_key:
+            # Provide more specific error handling
+            if "permission denied" in error_msg.lower():
                 return {
                     "success": False,
-                    "error": "Azure OpenAI 配置不完整，请检查 endpoint 和 API key"
+                    "error": "Permission denied: Text embedding access not enabled. Please check plugin manifest permissions or contact administrator.",
+                    "error_type": "PermissionError",
+                    "suggestion": "Ensure 'text_embedding: true' is set in manifest.yaml under resource.permission.model"
                 }
-            
-            # 尝试使用 PyMilvus 支持 Azure OpenAI（如果支持的话）
-            try:
-                # 构建 Azure OpenAI 的 base_url
-                azure_base_url = f"{azure_endpoint.rstrip('/')}/openai/deployments/{model_name}"
-                
-                # 尝试创建支持自定义 base_url 的 embedding 函数
-                embedding_fn = OpenAIEmbeddingFunction(
-                    model_name=model_name,
-                    api_key=azure_key,
-                    base_url=azure_base_url  # 尝试传递 base_url
-                )
-                
-                # 获取向量
-                query_vectors = embedding_fn.encode_queries([text])
-                embedding_vector = query_vectors[0]
-                
-                # 转换为列表
-                if hasattr(embedding_vector, 'tolist'):
-                    embedding_vector = embedding_vector.tolist()
-                else:
-                    embedding_vector = list(embedding_vector)
-                
+            elif "handshake failed" in error_msg.lower() or "invalid key" in error_msg.lower():
                 return {
-                    "success": True,
-                    "embedding": embedding_vector,
-                    "provider": "PyMilvus + Azure OpenAI"
+                    "success": False,
+                    "error": "Connection authentication failed. Plugin key may be expired or invalid.",
+                    "error_type": "AuthenticationError",
+                    "suggestion": "Please restart the plugin or check Dify server connection"
                 }
-                
-            except TypeError:
-                # PyMilvus 不支持 base_url 参数，回退到直接 API 调用
-                logger.warning("PyMilvus 不支持 Azure OpenAI base_url 参数，使用直接 API 调用")
-                return self._call_azure_openai_direct(text, model_name, azure_endpoint, azure_key, api_version)
-                
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Azure OpenAI embedding 调用失败: {str(e)}"
-            }
-    
-    def _call_azure_openai_direct(self, text: str, model_name: str, endpoint: str, api_key: str, api_version: str) -> dict:
-        """
-        直接调用 Azure OpenAI API（PyMilvus 不支持时的回退方案）
-        """
-        try:
-            import requests
-            
-            endpoint = endpoint.rstrip('/')
-            url = f"{endpoint}/openai/deployments/{model_name}/embeddings"
-            
-            headers = {
-                "api-key": api_key,
-                "Content-Type": "application/json"
-            }
-            
-            payload = {"input": text}
-            params = {"api-version": api_version}
-            
-            response = requests.post(url, headers=headers, json=payload, params=params, timeout=30)
-            
-            if response.status_code == 200:
-                result = response.json()
-                embedding = result["data"][0]["embedding"]
+            elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
                 return {
-                    "success": True,
-                    "embedding": embedding,
-                    "provider": "Azure OpenAI (Direct API)"
+                    "success": False,
+                    "error": "Network connection issue with Dify server. Please check connectivity.",
+                    "error_type": "ConnectionError",
+                    "suggestion": "Verify Dify server is running and accessible"
+                }
+            elif "model not found" in error_msg.lower() or "model_config" in error_msg.lower():
+                return {
+                    "success": False,
+                    "error": "Selected embedding model is not available or not configured in Dify workspace.",
+                    "error_type": "ModelError", 
+                    "suggestion": "Please select a different embedding model or configure the model in Dify"
                 }
             else:
                 return {
                     "success": False,
-                    "error": f"Azure OpenAI API 错误: {response.status_code} - {response.text}"
+                    "error": f"Dify model system embedding failed: {error_msg}",
+                    "error_type": "UnknownError",
+                    "suggestion": "Please check logs for more details"
                 }
-                
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Azure OpenAI 直接调用失败: {str(e)}"
-            }
     
     def _normalize_vector(self, vector: list) -> list:
         """
-        标准化向量（L2 归一化）
+        Normalize vector using L2 normalization
+        
+        Args:
+            vector: Input vector to normalize
+            
+        Returns:
+            Normalized vector
         """
         import math
         
-        norm = math.sqrt(sum(x * x for x in vector))
-        
-        if norm == 0:
-            return vector
-        
-        return [x / norm for x in vector]
+        try:
+            # Calculate L2 norm
+            norm = math.sqrt(sum(x * x for x in vector))
+            
+            if norm == 0:
+                logger.warning("⚠️ [DEBUG] Vector has zero norm, returning original vector")
+                return vector
+            
+            # Normalize
+            normalized = [x / norm for x in vector]
+            logger.debug(f"🔢 [DEBUG] Vector normalized, original norm: {norm:.6f}")
+            
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"❌ [DEBUG] Vector normalization failed: {str(e)}")
+            return vector  # Return original on error
     
-    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
-        """统一的错误处理"""
-        logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
-        error_msg = str(error)
-        response = {
-            "success": False,
-            "error": error_msg,
-            "error_type": type(error).__name__
+    def _handle_error(self, error: Exception, operation: str = "text_embedding") -> dict:
+        """
+        Format error for consistent error handling
+        
+        Args:
+            error: Exception that occurred
+            operation: Operation name for context
+            
+        Returns:
+            Formatted error dictionary
+        """
+        error_message = str(error)
+        error_type = type(error).__name__
+        
+        logger.error(f"❌ [DEBUG] {operation} error: {error_type}: {error_message}")
+        
+        return {
+            "status": "error",
+            "operation": operation,
+            "error": error_message,
+            "error_type": error_type,
+            "message": f"Operation {operation} failed: {error_message}"
         }
-        logger.debug(f"📤 [DEBUG] Sending error response: {response}")
-        yield self.create_json_message(response)
-    
-    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
-        """创建成功响应消息"""
-        logger.debug(f"🎉 [DEBUG] _create_success_message() called with data: {data}")
-        response = {
-            "success": True,
-            **data
-        }
-        logger.debug(f"📤 [DEBUG] Sending success response: {response}")
-        yield self.create_json_message(response)
-
-
-# 在模块级别添加调试信息
-logger.info("📦 [DEBUG] milvus_text_embedding.py module loaded")

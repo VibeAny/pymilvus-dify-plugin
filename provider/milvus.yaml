@@ -1,47 +1,71 @@
 identity:
-  author: "zeroz-lab"
+  author: "AI Plugin Developer"
   name: "milvus"
   label:
-    en_US: "Milvus Plus"
-    zh_Hans: "Milvus Plus"
-    pt_BR: "Milvus Plus"
+    en_US: "Milvus Vector Database"
+    zh_Hans: "Milvus 向量数据库"
+    pt_BR: "Banco de Dados Vetorial Milvus"
   description:
-    en_US: "Complete Milvus vector database client for AI applications with text embedding, semantic search, and BM25 keyword search capabilities"
-    zh_Hans: "用于AI应用的完整Milvus向量数据库客户端，支持文本嵌入、语义搜索和BM25关键词搜索功能"
-    pt_BR: "Cliente completo de banco de dados vetorial Milvus para aplicações de IA com recursos de embedding de texto, busca semântica e busca por palavras-chave BM25"
+    en_US: "Complete Milvus vector database integration with collection management, vector search, text embedding via Dify models, semantic search, and BM25 keyword search capabilities for AI applications"
+    zh_Hans: "完整的 Milvus 向量数据库集成，为 AI 应用提供集合管理、向量搜索、通过 Dify 模型的文本嵌入、语义搜索和 BM25 关键词搜索功能"
+    pt_BR: "Integração completa do banco de dados vetorial Milvus com gerenciamento de coleções, busca vetorial, embedding de texto via modelos Dify, busca semântica e busca por palavras-chave BM25 para aplicações de IA"
   icon: "icon.svg"
+  tags:
+    - search
+    - utilities
+    - productivity
+
 credentials_for_provider:
-  # Milvus 连接配置
+  # Milvus gRPC Connection Configuration
   uri:
     type: text-input
     required: true
     label:
-      en_US: "Milvus URI"
-      zh_Hans: "Milvus URI"
-      pt_BR: "URI do Milvus"
+      en_US: "Milvus Server URI"
+      zh_Hans: "Milvus 服务器地址"
+      pt_BR: "URI do Servidor Milvus"
     placeholder:
-      en_US: "http://localhost:19530 or https://your-milvus-cluster.com:19530"
-      zh_Hans: "http://localhost:19530 或 https://your-milvus-cluster.com:19530"
-      pt_BR: "http://localhost:19530 ou https://your-milvus-cluster.com:19530"
+      en_US: "milvus-server.com:19530"
+      zh_Hans: "milvus-server.com:19530"
+      pt_BR: "milvus-server.com:19530"
     help:
-      en_US: "The URI of your Milvus instance"
-      zh_Hans: "您的Milvus实例的URI"
-      pt_BR: "O URI da sua instância do Milvus"
-  token:
-    type: secret-input
-    required: false
+      en_US: "Milvus server endpoint (gRPC format like host:port or HTTP/HTTPS URLs will be auto-converted)"
+      zh_Hans: "Milvus 服务器端点（gRPC 格式如 host:port 或 HTTP/HTTPS URL 将自动转换）"
+      pt_BR: "Endpoint do servidor Milvus (formato gRPC como host:port ou URLs HTTP/HTTPS serão auto-convertidas)"
+    
+  user:
+    type: text-input
+    required: true
+    default: "root"
     label:
-      en_US: "Authentication Token"
-      zh_Hans: "认证令牌"
-      pt_BR: "Token de Autenticação"
+      en_US: "Username"
+      zh_Hans: "用户名"
+      pt_BR: "Nome de Usuário"
     placeholder:
-      en_US: "username:password or API key"
-      zh_Hans: "用户名:密码 或 API密钥"
-      pt_BR: "usuário:senha ou chave API"
+      en_US: "user"
+      zh_Hans: "user"
+      pt_BR: "user"
     help:
-      en_US: "Authentication token for Milvus (optional for local instances)"
-      zh_Hans: "Milvus的认证令牌（本地实例可选）"
-      pt_BR: "Token de autenticação para Milvus (opcional para instâncias locais)"
+      en_US: "Milvus database username"
+      zh_Hans: "Milvus 数据库用户名"
+      pt_BR: "Nome de usuário do banco de dados Milvus"
+    
+  password:
+    type: secret-input
+    required: true
+    label:
+      en_US: "Password"
+      zh_Hans: "密码"
+      pt_BR: "Senha"
+    placeholder:
+      en_US: "Enter your password"
+      zh_Hans: "输入密码"
+      pt_BR: "Digite sua senha"
+    help:
+      en_US: "Milvus database password"
+      zh_Hans: "Milvus 数据库密码"
+      pt_BR: "Senha do banco de dados Milvus"
+    
   database:
     type: text-input
     required: false
@@ -55,135 +79,16 @@ credentials_for_provider:
       zh_Hans: "default"
       pt_BR: "default"
     help:
-      en_US: "The database name to connect to"
-      zh_Hans: "要连接的数据库名称"
-      pt_BR: "O nome do banco de dados para conectar"
-  
-  # 嵌入模型提供商选择
-  embedding_provider:
-    type: select
-    required: false
-    default: "openai"
-    label:
-      en_US: "Embedding Provider"
-      zh_Hans: "嵌入模型提供商"
-      pt_BR: "Provedor de Embedding"
-    help:
-      en_US: "Choose the embedding service provider for text vectorization"
-      zh_Hans: "选择用于文本向量化的嵌入服务提供商"
-      pt_BR: "Escolha o provedor de serviço de embedding para vetorização de texto"
-    options:
-      - value: "openai"
-        label:
-          en_US: "OpenAI"
-          zh_Hans: "OpenAI"
-          pt_BR: "OpenAI"
-      - value: "azure_openai"
-        label:
-          en_US: "Azure OpenAI"
-          zh_Hans: "Azure OpenAI"
-          pt_BR: "Azure OpenAI"
-  
-  # OpenAI 配置组
-  openai_api_key:
-    type: secret-input
-    required: false
-    show_on:
-      - variable: embedding_provider
-        value: openai
-    label:
-      en_US: "🔑 OpenAI API Key"
-      zh_Hans: "🔑 OpenAI API 密钥"
-      pt_BR: "🔑 Chave API OpenAI"
-    placeholder:
-      en_US: "sk-..."
-      zh_Hans: "sk-..."
-      pt_BR: "sk-..."
-    help:
-      en_US: "OpenAI API key for text embedding (required when using OpenAI provider)"
-      zh_Hans: "用于文本嵌入的 OpenAI API 密钥（使用OpenAI提供商时必需）"
-      pt_BR: "Chave API OpenAI para embedding de texto (obrigatório ao usar provedor OpenAI)"
-  
-  # Azure OpenAI 配置组
-  azure_openai_endpoint:
-    type: text-input
-    required: false
-    show_on:
-      - variable: embedding_provider
-        value: azure_openai
-    label:
-      en_US: "🌐 Azure OpenAI Endpoint"
-      zh_Hans: "🌐 Azure OpenAI 端点"
-      pt_BR: "🌐 Endpoint Azure OpenAI"
-    placeholder:
-      en_US: "https://your-resource.openai.azure.com"
-      zh_Hans: "https://your-resource.openai.azure.com"
-      pt_BR: "https://your-resource.openai.azure.com"
-    help:
-      en_US: "Azure OpenAI service endpoint (required when using Azure OpenAI provider)"
-      zh_Hans: "Azure OpenAI 服务端点（使用Azure OpenAI提供商时必需）"
-      pt_BR: "Endpoint do serviço Azure OpenAI (obrigatório ao usar provedor Azure OpenAI)"
-  azure_openai_api_key:
-    type: secret-input
-    required: false
-    show_on:
-      - variable: embedding_provider
-        value: azure_openai
-    label:
-      en_US: "🔑 Azure OpenAI API Key"
-      zh_Hans: "🔑 Azure OpenAI API 密钥"
-      pt_BR: "🔑 Chave API Azure OpenAI"
-    help:
-      en_US: "Azure OpenAI API key for text embedding (required when using Azure OpenAI provider)"
-      zh_Hans: "用于文本嵌入的 Azure OpenAI API 密钥（使用Azure OpenAI提供商时必需）"
-      pt_BR: "Chave API Azure OpenAI para embedding de texto (obrigatório ao usar provedor Azure OpenAI)"
-  azure_api_version:
-    type: text-input
-    required: false
-    default: "2023-12-01-preview"
-    show_on:
-      - variable: embedding_provider
-        value: azure_openai
-    label:
-      en_US: "📅 Azure API Version"
-      zh_Hans: "📅 Azure API 版本"
-      pt_BR: "📅 Versão API Azure"
-    help:
-      en_US: "Azure OpenAI API version (only needed when using Azure OpenAI provider)"
-      zh_Hans: "Azure OpenAI API 版本（仅在使用Azure OpenAI提供商时需要）"
-      pt_BR: "Versão da API Azure OpenAI (apenas necessária ao usar provedor Azure OpenAI)"
-  
-  # 模型配置
-  default_embedding_model:
-    type: select
-    required: false
-    default: "text-embedding-3-small"
-    label:
-      en_US: "🤖 Default Embedding Model"
-      zh_Hans: "🤖 默认嵌入模型"
-      pt_BR: "🤖 Modelo de Embedding Padrão"
-    help:
-      en_US: "Default embedding model to use for text vectorization"
-      zh_Hans: "用于文本向量化的默认嵌入模型"
-      pt_BR: "Modelo de embedding padrão para usar na vetorização de texto"
-    options:
-      - value: "text-embedding-3-small"
-        label:
-          en_US: "text-embedding-3-small (1536 dimensions, fast & cost-effective)"
-          zh_Hans: "text-embedding-3-small (1536维，快速且经济)"
-          pt_BR: "text-embedding-3-small (1536 dimensões, rápido e econômico)"
-      - value: "text-embedding-3-large"
-        label:
-          en_US: "text-embedding-3-large (3072 dimensions, highest quality)"
-          zh_Hans: "text-embedding-3-large (3072维，最高质量)"
-          pt_BR: "text-embedding-3-large (3072 dimensões, maior qualidade)"
-      - value: "text-embedding-ada-002"
-        label:
-          en_US: "text-embedding-ada-002 (1536 dimensions, legacy model)"
-          zh_Hans: "text-embedding-ada-002 (1536维，旧版模型)"
-          pt_BR: "text-embedding-ada-002 (1536 dimensões, modelo legado)"
+      en_US: "Milvus database name (default: 'default')"
+      zh_Hans: "Milvus 数据库名称（默认：'default'）"
+      pt_BR: "Nome do banco de dados Milvus (padrão: 'default')"
+
+
 tools:
-  - tools/milvus_collection.yaml
+  - tools/milvus_collection_create.yaml
+  - tools/milvus_collection_list.yaml
+  - tools/milvus_collection_describe.yaml
+  - tools/milvus_collection_drop.yaml
   - tools/milvus_search.yaml
   - tools/milvus_insert.yaml
   - tools/milvus_query.yaml
@@ -191,6 +96,7 @@ tools:
   - tools/milvus_text_embedding.yaml
   - tools/milvus_text_search.yaml
   - tools/milvus_bm25_search.yaml
+
 extra:
   python:
     source: provider/milvus.py

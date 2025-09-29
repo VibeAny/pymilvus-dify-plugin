@@ -1,183 +1,283 @@
-# Milvus Plus Vector Database Plugin for Dify
+# Milvus Vector Database Plugin for Dify
 
-An enhanced Milvus vector database plugin that provides comprehensive vector operations for the Dify platform, including collection management, data operations, text embedding, semantic search, and BM25 keyword search capabilities.
-
-[中文文档](./README_zh.md) | [English](./README.md)
-
-## Acknowledgments
-
-This project is built upon the original Milvus plugin with significant enhancements. We thank the original author for their contribution.
+A comprehensive Milvus vector database plugin for the Dify platform, providing complete vector database operations including collection management, data operations, vector search, text embedding, and native BM25 search capabilities.
 
 ## Features
 
 ### 🗂️ Collection Management
-- **List Collections**: View all available collections
-- **Describe Collection**: Get detailed collection information
-- **Collection Stats**: Retrieve collection statistics
-- **Check Existence**: Verify if collections exist
+- **Create Collections**: Create new vector collections with custom schemas
+- **List Collections**: View all available collections in your database
+- **Describe Collections**: Get detailed schema and configuration information
+- **Drop Collections**: Remove collections with safety confirmations
 
 ### 📥 Data Operations
 - **Insert Data**: Add vectors and metadata to collections
-- **Upsert Data**: Insert or update existing data
-- **Query Data**: Retrieve data by ID or filter conditions
-- **Delete Data**: Remove data from collections
+- **Query Data**: Retrieve data using filters and conditions
+- **Delete Data**: Remove specific records using filter expressions
+- **Bulk Operations**: Efficient batch processing for large datasets
 
 ### 🔍 Vector Search
-- **Similarity Search**: Find similar vectors using various metrics
-- **Filtered Search**: Combine vector similarity with metadata filters
-- **Multi-Vector Search**: Search with multiple query vectors
-- **Custom Parameters**: Adjust search behavior parameters
+- **Similarity Search**: Find similar vectors using COSINE, L2, or IP metrics
+- **Advanced Search**: Support for custom search parameters and filters
+- **Multi-field Output**: Retrieve specific fields from search results
+- **Performance Tuning**: Configurable search parameters for optimal performance
 
-### ✨ Enhanced Features (New)
+### ✨ Text Processing & Search
+- **Text Embedding**: Convert text to vectors using OpenAI or Azure OpenAI
+- **Semantic Search**: End-to-end text-to-vector search workflow
+- **BM25 Search**: Traditional keyword-based search with BM25 algorithm
+- **Hybrid Search**: Combine vector and keyword search for best results
 
-#### 🔤 Text Embedding
-- **Auto Vectorization**: Convert text to vectors using PyMilvus
-- **Multi-Model Support**: Support for OpenAI and Azure OpenAI embedding models
-- **Vector Normalization**: Optional L2 vector normalization
-- **Dimension Detection**: Automatic vector dimension detection
+### 🎯 AI-Focused Capabilities
+- **Multiple Embedding Providers**: OpenAI and Azure OpenAI integration
+- **Fallback Mechanisms**: Robust handling when embedding services are unavailable
+- **Schema Flexibility**: Support for various vector dimensions and data types
+- **BM25 Collections**: Native support for text analysis and BM25 indexing
 
-#### 🔍 Semantic Text Search  
-- **End-to-End Search**: Text queries automatically converted to vectors and searched
-- **Similarity Filtering**: Support minimum similarity threshold filtering
-- **Multiple Distance Metrics**: Support for COSINE, L2, and other distance metrics
-- **Flexible Output**: Custom output fields and filter conditions
+## Installation & Setup
 
-#### 📝 BM25 Keyword Search
-- **Traditional Text Retrieval**: BM25 algorithm-based keyword search
-- **Parameter Tuning**: Support for custom k1, b parameter adjustment
-- **Fast Response**: Direct text matching without vectorization
-- **Hybrid Search**: Can be combined with vector search
+### Prerequisites
+- Milvus 2.3.0+ server instance
+- Valid OpenAI API key (for text embedding features)
+- Dify platform 1.5.0+
 
-## Installation & Configuration
+### Configuration
 
-### Connection Configuration
-Configure your Milvus connection in the Dify platform:
+#### 1. Milvus Database Connection
+Configure your Milvus connection parameters:
 
-#### 🔧 Milvus Basic Configuration
-- **URI**: Milvus server address (e.g., `http://localhost:19530`)
-- **Token**: Authentication token (optional, format: `username:password`)
-- **Database**: Target database name (default: `default`)
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `uri` | string | ✅ | Milvus server URI (e.g., `https://your-milvus.com:443`) |
+| `user` | string | ✅ | Username for authentication |
+| `password` | string | ✅ | Password for authentication |
+| `database` | string | ❌ | Database name (default: `default`) |
 
-#### 🤖 Embedding Model Configuration
-Choose embedding provider: `openai` or `azure_openai`
+#### 2. Embedding Provider Configuration
+Choose your text embedding provider:
 
-##### OpenAI Configuration
-- **OpenAI API Key**: Your OpenAI API key
-- **OpenAI Base URL**: API base URL (optional)
+**OpenAI Configuration:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `embedding_provider` | select | ❌ | Set to `openai` |
+| `openai_api_key` | string | ✅ | Your OpenAI API key |
+| `openai_base_url` | string | ❌ | Custom API base URL |
 
-##### Azure OpenAI Configuration  
-- **Azure OpenAI Endpoint**: Azure OpenAI service endpoint
-- **Azure OpenAI API Key**: Azure OpenAI API key
-- **Azure API Version**: API version (default: 2023-12-01-preview)
+**Azure OpenAI Configuration:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `embedding_provider` | select | ❌ | Set to `azure_openai` |
+| `azure_openai_api_key` | string | ✅ | Azure OpenAI API key |
+| `azure_openai_endpoint` | string | ✅ | Azure OpenAI service endpoint |
+| `azure_api_version` | string | ❌ | API version (default: `2023-12-01-preview`) |
+
+## Available Tools
+
+### 1. Collection Management
+
+#### Create Collection
+Create a new vector collection with custom schema:
+```
+Parameters:
+- collection_name: Name for the new collection
+- dimension: Vector dimension (1-32768)
+- metric_type: Distance metric (COSINE, L2, IP)
+- description: Optional collection description
+- enable_bm25: Enable BM25 search support (boolean)
+```
+
+#### List Collections
+List all collections in the database:
+```
+No parameters required
+```
+
+#### Describe Collection
+Get detailed information about a collection:
+```
+Parameters:
+- collection_name: Name of the collection to describe
+```
+
+#### Drop Collection
+Delete a collection permanently:
+```
+Parameters:
+- collection_name: Name of the collection to delete
+- confirm_delete: Confirmation flag (must be true)
+```
+
+### 2. Data Operations
+
+#### Insert Data
+Add data to a collection:
+```
+Parameters:
+- collection_name: Target collection name
+- data: JSON array of records to insert
+```
+
+Example data format:
+```json
+[
+  {
+    \"id\": 1,
+    \"vector\": [0.1, 0.2, 0.3, ...],
+    \"text\": \"Sample document content\",
+    \"metadata\": {\"category\": \"example\"}
+  }
+]
+```
+
+#### Query Data
+Retrieve data using filter conditions:
+```
+Parameters:
+- collection_name: Target collection name
+- filter: Filter expression (e.g., \"id in [1, 2, 3]\")
+- output_fields: Fields to return (comma-separated)
+- limit: Maximum number of results
+- offset: Number of results to skip
+```
+
+#### Delete Data
+Remove data using filter conditions:
+```
+Parameters:
+- collection_name: Target collection name
+- filter: Filter expression to select records
+- confirm_delete: Confirmation flag (must be true)
+```
+
+### 3. Search Operations
+
+#### Vector Search
+Find similar vectors:
+```
+Parameters:
+- collection_name: Target collection name
+- query_vector: Query vector as JSON array
+- limit: Number of results to return
+- output_fields: Fields to include in results
+- filter: Optional filter expression
+- metric_type: Distance metric (COSINE, L2, IP)
+```
+
+#### Text Embedding
+Convert text to vectors:
+```
+Parameters:
+- text: Text to convert to vector
+- model_name: Embedding model name (e.g., \"text-embedding-3-small\")
+```
+
+#### Text Search
+Search using natural language queries:
+```
+Parameters:
+- collection_name: Target collection name
+- query_text: Natural language query
+- model_name: Embedding model name
+- limit: Number of results to return
+- output_fields: Fields to include in results
+- similarity_threshold: Minimum similarity score
+```
+
+#### BM25 Search
+Keyword-based text search:
+```
+Parameters:
+- collection_name: Target collection name
+- query_text: Search keywords
+- limit: Number of results to return
+- k1: BM25 k1 parameter (default: 1.2)
+- b: BM25 b parameter (default: 0.75)
+```
 
 ## Usage Examples
 
-### Collection Operations
-```python
-# List all collections
-{"operation": "list"}
+### Basic Collection Workflow
+1. **Create a collection** with vector and text fields
+2. **Insert data** with vectors and text content
+3. **Search** using vectors or natural language
+4. **Query** specific records using filters
 
-# Describe collection
-{"operation": "describe", "collection_name": "my_collection"}
+### Text-Based AI Workflow
+1. **Create a BM25-enabled collection** for text search
+2. **Insert documents** with text content
+3. **Use text search** for semantic similarity
+4. **Use BM25 search** for keyword matching
+5. **Combine results** for hybrid search
 
-# Get collection statistics
-{"operation": "stats", "collection_name": "my_collection"}
-
-# Check if collection exists
-{"operation": "exists", "collection_name": "my_collection"}
-```
-
-### Data Operations
-```python
-# Insert data
-{
-  "collection_name": "my_collection",
-  "data": [{"id": 1, "vector": [0.1, 0.2, 0.3], "metadata": "sample"}]
-}
-
-# Vector search
-{
-  "collection_name": "my_collection",
-  "query_vector": [0.1, 0.2, 0.3],
-  "limit": 10
-}
-```
-
-### ✨ Enhanced Features Examples
-
-#### Text Embedding
-```python
-{
-  "text": "This is a text that needs to be vectorized",
-  "model": "text-embedding-3-small",
-  "normalize": true
-}
-```
-
-#### Semantic Text Search
-```python
-{
-  "collection_name": "documents",
-  "query_text": "artificial intelligence development history",
-  "limit": 5,
-  "embedding_model": "text-embedding-3-small",
-  "metric_type": "COSINE",
-  "min_similarity": 0.7,
-  "output_fields": "title,content,metadata"
-}
-```
-
-#### BM25 Keyword Search
-```python
-{
-  "collection_name": "documents", 
-  "query_text": "machine learning deep learning",
-  "limit": 10,
-  "bm25_k1": 1.2,
-  "bm25_b": 0.75,
-  "output_fields": "title,content,score"
-}
-```
+### Advanced Use Cases
+- **Document retrieval systems** with semantic search
+- **Knowledge base search** with BM25 + vector search
+- **Content recommendation** using vector similarity
+- **Multi-modal search** combining text and metadata filters
 
 ## Technical Architecture
 
-### Dependencies
-- **PyMilvus**: Milvus Python SDK (v2.6.0+)
-- **PyMilvus[model]**: Embedding model support
-- **requests**: HTTP API calls
-- **dify_plugin**: Dify plugin framework
+### PyMilvus Integration
+- Built on PyMilvus 2.6.0+ with gRPC connectivity
+- Native support for all Milvus features
+- Efficient connection management and error handling
 
-### Tool List
-1. **milvus_collection** - Collection management operations
-2. **milvus_data** - Data CRUD operations  
-3. **milvus_search** - Vector similarity search
-4. **milvus_text_embedding** - Text vectorization ✨
-5. **milvus_text_search** - Semantic text search ✨
-6. **milvus_bm25_search** - BM25 keyword search ✨
+### Text Processing Pipeline
+- Direct integration with OpenAI/Azure OpenAI APIs
+- Fallback mechanisms for embedding service issues
+- Support for multiple embedding models and dimensions
 
-### Architecture Features
-- **Unified Error Handling**: Consistent error messages and exception handling
-- **Connection Pool Management**: Efficient Milvus connection management
-- **Dual Client Support**: HTTP API and SDK client coexistence
-- **Auto Fallback Mechanism**: Automatic fallback to direct API calls when Azure OpenAI is incompatible
+### BM25 Implementation
+- Native Milvus BM25 functions for optimal performance
+- Sparse vector indexing for fast text retrieval
+- Configurable ranking parameters
 
-## Development Information
+### Error Handling & Reliability
+- Comprehensive input validation
+- User-friendly error messages
+- Automatic retry mechanisms for transient failures
+- Safe deletion confirmations for destructive operations
 
-- **Version**: 0.1.3
-- **Author**: VibeAny (Original) + Enhanced by ZeroZ Lab
-- **License**: MIT License
-- **Minimum Dify Version**: 1.5.0
+## Performance & Best Practices
 
-## Changelog
+### Collection Design
+- Choose appropriate vector dimensions for your use case
+- Use meaningful field names and proper data types
+- Enable BM25 only when text search is needed
 
-### v0.1.3 (Enhanced)
-- ✨ Added text embedding tool
-- ✨ Added semantic text search tool  
-- ✨ Added BM25 keyword search tool
-- 🔧 Refactored to unified tool architecture
-- 🔧 Enhanced error handling and logging
-- 🔧 Optimized user configuration interface
-- 🔧 Support for both OpenAI and Azure OpenAI providers
+### Search Optimization
+- Use filters to narrow search space
+- Adjust search parameters based on your data characteristics
+- Consider hybrid search for comprehensive results
 
+### Data Management
+- Use batch operations for large datasets
+- Implement proper error handling in your applications
+- Regular maintenance and monitoring of collection performance
 
+## Security & Privacy
 
+### Data Protection
+- All data is processed according to your Milvus server configuration
+- Text sent to embedding providers follows their respective privacy policies
+- No user data is stored within the plugin itself
+
+### Authentication
+- Secure credential storage within Dify
+- Support for user/password authentication with Milvus
+- API key management for embedding providers
+
+## Support & Maintenance
+
+For technical support and feature requests, please contact the plugin maintainer through the provided support channels.
+
+### System Requirements
+- Milvus 2.3.0 or higher
+- Python 3.8+ runtime environment  
+- Dify platform 1.5.0 or higher
+
+### Plugin Information
+- **Version**: 1.0.0
+- **License**: MIT
+- **Author**: AI Plugin Developer
+- **Maintenance**: Active development and support

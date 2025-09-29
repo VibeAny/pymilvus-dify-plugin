@@ -1,7 +1,12 @@
-from typing import Any, List, Union
+"""
+Milvus Delete Tool
+
+Deletes data from a Milvus collection using PyMilvus client.
+This tool replaces HTTP API calls with pure PyMilvus gRPC operations.
+"""
+from typing import Any
 from collections.abc import Generator
 import json
-import ast
 import logging
 
 from dify_plugin import Tool
@@ -10,102 +15,85 @@ from .milvus_base import MilvusBaseTool
 
 logger = logging.getLogger(__name__)
 
-class MilvusDeleteTool(MilvusBaseTool, Tool):
-    """Milvus 数据删除工具"""
-    
-    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """执行删除操作"""
+
+class MilvusDeleteTool(Tool):
+    """Tool for deleting data from Milvus collections"""
+
+    def __init__(self, runtime=None, session=None):
+        super().__init__(runtime, session)
+        self.runtime = runtime
+        self.session = session
+        self.base_tool = MilvusBaseTool()
+
+    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Delete data from a Milvus collection
+        
+        Args:
+            tool_parameters: Contains collection_name and filter parameters
+            
+        Returns:
+            Generator yielding ToolInvokeMessage with deletion result
+        """
+        logger.info(f"🚀 [DEBUG] MilvusDeleteTool._invoke() called with params: {tool_parameters}")
+        
         try:
             collection_name = tool_parameters.get("collection_name")
-            ids_param = tool_parameters.get("ids")
             filter_expr = tool_parameters.get("filter")
-            partition_name = tool_parameters.get("partition_name", "")
-
-            if not collection_name or not self._validate_collection_name(collection_name):
-                raise ValueError("Invalid or missing collection name.")
-
-            logger.debug(f"🔍 [DEBUG] Delete parameters - collection: {collection_name}, ids: {ids_param}, filter: {filter_expr}")
             
-            # 处理 ids 参数
-            ids = None
-            if ids_param:
-                ids = self._parse_ids(ids_param)
-                logger.debug(f"🔢 [DEBUG] Parsed IDs: {ids}")
+            if not collection_name:
+                raise ValueError("collection_name is required")
+            
+            if not filter_expr:
+                raise ValueError("filter expression is required for safety - cannot delete all data")
+            
+            logger.info(f"🗑️ [DEBUG] Deleting from collection: {collection_name}")
+            logger.info("🔗 [DEBUG] Attempting to connect to Milvus...")
+            
+            with self.base_tool._get_milvus_client(self.runtime.credentials) as client:
+                logger.info("✅ [DEBUG] Successfully connected to Milvus")
                 
-            # 校验 ids 和 filter
-            if not ids and not filter_expr:
-                raise ValueError("Either 'ids' or 'filter' must be provided for the delete operation.")
-
-            with self._get_milvus_client(self.runtime.credentials) as client:
+                # Check if collection exists
                 if not client.has_collection(collection_name):
-                    raise ValueError(f"Collection '{collection_name}' does not exist.")
+                    raise ValueError(f"Collection '{collection_name}' does not exist")
                 
-                # 执行删除
-                result = client.delete(
+                # Perform deletion
+                delete_result = client.delete(
                     collection_name=collection_name,
-                    ids=ids,
-                    filter=filter_expr,
-                    partition_name=partition_name if partition_name else None
+                    filter=filter_expr
                 )
                 
-                response_data = {
-                    "operation": "delete",
-                    "collection_name": collection_name,
+                logger.info(f"✅ [DEBUG] Deletion completed successfully")
+                
+                # Prepare response
+                response = {
                     "success": True,
-                    "message": f"Delete operation was successful for collection '{collection_name}'."
+                    "collection_name": collection_name,
+                    "filter": filter_expr,
+                    "delete_count": delete_result.get("delete_count", 0) if delete_result else 0
                 }
-                yield from self._create_success_message(response_data)
+                
+                logger.info(f"✅ [DEBUG] Operation completed successfully")
+                yield self.create_json_message(response)
                 
         except Exception as e:
-            logger.error(f"❌ [DEBUG] Delete operation failed: {str(e)}")
+            logger.error(f"❌ [DEBUG] Error in _invoke(): {type(e).__name__}: {str(e)}", exc_info=True)
             yield from self._handle_error(e)
-
-    def _parse_ids(self, ids_param: Union[str, List]) -> List:
-        """安全地解析 IDs 参数"""
-        if isinstance(ids_param, list):
-            return ids_param
+    
+    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
+        """Handle and format errors consistently"""
+        logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
         
-        if isinstance(ids_param, str):
-            try:
-                # 尝试使用 json.loads 解析
-                try:
-                    parsed_ids = json.loads(ids_param)
-                    if isinstance(parsed_ids, list):
-                        return parsed_ids
-                except json.JSONDecodeError:
-                    # 如果 JSON 解析失败，尝试使用 ast.literal_eval
-                    parsed_ids = ast.literal_eval(ids_param)
-                    if isinstance(parsed_ids, list):
-                        return parsed_ids
-                    
-                # 如果解析结果不是列表，但是是单个值，则包装成列表
-                if not isinstance(parsed_ids, list):
-                    return [parsed_ids]
-                    
-                return parsed_ids
-            except (json.JSONDecodeError, ValueError, SyntaxError):
-                # 如果所有解析方法都失败，将字符串作为单个ID处理
-                return [ids_param]
-        
-        # 如果不是字符串也不是列表，但有值，则作为单个ID处理
-        if ids_param is not None:
-            return [ids_param]
-            
-        return []
-
-    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage, None, None]:
-        """统一的错误处理"""
         error_msg = str(error)
-        yield self.create_json_message({
+        response = {
             "success": False,
             "error": error_msg,
             "error_type": type(error).__name__
-        })
-    
-    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """创建成功响应消息"""
-        response = {
-            "success": True,
-            **data
         }
-        yield self.create_json_message(response) 
+        
+        logger.debug(f"📤 [DEBUG] Sending error response: {response}")
+        yield self.create_json_message(response)
+
+
+# Module level debug info
+logger.info("📦 [DEBUG] milvus_delete.py module loaded")

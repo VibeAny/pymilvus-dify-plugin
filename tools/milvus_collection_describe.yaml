@@ -1,0 +1,32 @@
+identity:
+  name: milvus_collection_describe
+  author: vibeany
+  label:
+    en_US: Describe Milvus Collection
+    zh_Hans: 描述 Milvus 集合
+    pt_BR: Descrever Coleção Milvus
+
+description:
+  human:
+    en_US: Get detailed information about a Milvus collection schema and configuration using PyMilvus gRPC API. Returns collection structure, field definitions, and metadata.
+    zh_Hans: 使用 PyMilvus gRPC API 获取 Milvus 集合的详细信息，包括集合结构、字段定义和元数据。
+    pt_BR: Obtenha informações detalhadas sobre esquema e configuração de uma coleção Milvus usando PyMilvus gRPC API. Retorna estrutura da coleção, definições de campos e metadados.
+  llm: A tool for getting detailed information about a Milvus collection schema and configuration using PyMilvus gRPC API
+
+parameters:
+  - name: collection_name
+    type: string
+    required: true
+    label:
+      en_US: Collection Name
+      zh_Hans: 集合名称
+      pt_BR: Nome da Coleção
+    human_description:
+      en_US: Name of the Milvus collection to describe
+      zh_Hans: 要描述的 Milvus 集合名称
+      pt_BR: Nome da coleção Milvus para descrever
+    form: llm
+
+extra:
+  python:
+    source: tools/milvus_collection_describe.py
