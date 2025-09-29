@@ -1,6 +1,6 @@
 identity:
   name: milvus_bm25_search
-  author: zeroz-lab
+  author: VibeAny
   label:
     en_US: "Milvus BM25 Text Search"
     zh_Hans: "Milvus BM25文本搜索"
